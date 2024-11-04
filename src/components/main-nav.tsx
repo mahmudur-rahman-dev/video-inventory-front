@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-
+import { useAuth } from "@/hooks/useAuth"
 import { cn } from "@/lib/utils"
 
 export function MainNav({
@@ -10,29 +10,40 @@ export function MainNav({
   ...props
 }: React.HTMLAttributes<HTMLElement>) {
   const pathname = usePathname()
+  const { userRole } = useAuth()
 
-  const routes = [
+  const adminRoutes = [
     {
-      href: `/`,
-      label: 'Overview',
-      active: pathname === `/`,
+      href: `/admin`,
+      label: 'Dashboard',
+      active: pathname === `/admin`,
     },
     {
-      href: `/videos`,
-      label: 'Videos',
-      active: pathname === `/videos`,
+      href: `/admin/videos`,
+      label: 'Manage Videos',
+      active: pathname === `/admin/videos`,
     },
     {
-      href: `/users`,
-      label: 'Users',
-      active: pathname === `/users`,
+      href: `/admin/users`,
+      label: 'Manage Users',
+      active: pathname === `/admin/users`,
     },
     {
-      href: `/activity`,
-      label: 'Activity',
-      active: pathname === `/activity`,
+      href: `/admin/activity`,
+      label: 'Activity Logs',
+      active: pathname === `/admin/activity`,
     },
   ]
+
+  const userRoutes = [
+    {
+      href: `/dashboard`,
+      label: 'My Videos',
+      active: pathname === `/dashboard`,
+    },
+  ]
+
+  const routes = userRole === 'admin' ? adminRoutes : userRoutes
 
   return (
     <nav

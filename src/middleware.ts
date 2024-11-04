@@ -12,13 +12,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/admin', request.url))
   }
 
-  if (userRole === 'user' && !request.nextUrl.pathname.startsWith('/dashboard')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
+  if (userRole === 'user' && !request.nextUrl.pathname.startsWith('/user')) {
+    return NextResponse.redirect(new URL('/user', request.url))
   }
 
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|videos).*)'],
 }

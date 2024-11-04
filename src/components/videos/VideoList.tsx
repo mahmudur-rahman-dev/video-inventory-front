@@ -1,60 +1,48 @@
 "use client"
 
-import { useState } from 'react'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
+import { useState } from "react"
 import { VideoPlayer } from "./VideoPlayer"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 
 interface Video {
-  id: string;
-  title: string;
-  description: string;
-  videoUrl: string;
+  id: string
+  title: string
+  description: string
+  videoUrl: string
 }
 
 interface VideoListProps {
-  videos: Video[];
-  isUserView?: boolean;
+  videos: Video[]
 }
 
-export function VideoList({ videos, isUserView = false }: VideoListProps) {
+export function VideoList({ videos }: VideoListProps) {
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
 
   return (
-    <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Title</TableHead>
-            <TableHead>Description</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {videos.map((video) => (
-            <TableRow key={video.id}>
-              <TableCell>{video.title}</TableCell>
-              <TableCell>{video.description}</TableCell>
-              <TableCell>
-                {isUserView ? (
-                  <Button onClick={() => setSelectedVideo(video)}>Watch</Button>
-                ) : (
-                  <>
-                    <Button variant="outline" size="sm" className="mr-2">Edit</Button>
-                    <Button variant="destructive" size="sm">Delete</Button>
-                  </>
-                )}
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+    <div className="space-y-8">
       {selectedVideo && (
-        <VideoPlayer 
-          videoUrl={selectedVideo.videoUrl} 
-          onClose={() => setSelectedVideo(null)} 
+        <VideoPlayer
+          src={selectedVideo.videoUrl}
+          title={selectedVideo.title}
+          videoId={selectedVideo.id}
         />
       )}
-    </>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {videos.map((video) => (
+          <Card key={video.id}>
+            <CardHeader>
+              <CardTitle>{video.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-4">{video.description}</p>
+              <Button onClick={() => setSelectedVideo(video)}>
+                {selectedVideo?.id === video.id ? "Now Playing" : "Watch Video"}
+              </Button>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   )
 }
