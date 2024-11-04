@@ -5,8 +5,8 @@ import ReactPlayer from "react-player"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Volume2, VolumeX, Maximize, Minimize } from "lucide-react"
-import { useAuth } from "@/hooks/useAuth"
-import { logActivity } from "@/lib/api"
+import { useAuth } from "@/providers/auth-provider"
+// import { logActivity } from "@/lib/api-client"
 
 interface VideoPlayerProps {
   src: string
@@ -26,7 +26,7 @@ export function VideoPlayer({ src, title, videoId }: VideoPlayerProps) {
 
   const handlePlay = () => {
     setIsPlaying(true)
-    logActivity(videoId, 'viewed')
+    // logActivity(videoId, 'viewed')
   }
 
   const handlePause = () => {

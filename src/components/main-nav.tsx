@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/providers/auth-provider"
 import { cn } from "@/lib/utils"
 
 export function MainNav({

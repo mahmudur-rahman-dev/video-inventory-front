@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Heading } from "@/components/ui/heading"
 import { Container } from "@/components/ui/container"
 import { Navbar } from "@/components/navbar"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/providers/auth-provider"
 
 export default function UserDashboard() {
   const { isAuthenticated, userRole } = useAuth()

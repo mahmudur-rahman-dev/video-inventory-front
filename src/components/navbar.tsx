@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/providers/auth-provider"
 import { MainNav } from "@/components/main-nav"
 import { Container } from "@/components/ui/container"
 import { Button } from "@/components/ui/button"

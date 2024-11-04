@@ -9,7 +9,7 @@ import { ActivityLog } from "@/components/user/ActivityLog"
 import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/hooks/useAuth"
+import { useAuth } from "@/providers/auth-provider"
 import { dummyAssignedVideos } from "@/lib/dummy-data"
 
 export default function UserDashboard() {
