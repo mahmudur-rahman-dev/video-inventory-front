@@ -1,43 +1,82 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api'
+import { Video, User, ActivityLogEntry } from './types'
 
-async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('token')
-  const headers = {
-    ...options.headers,
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`,
-  }
+const API_BASE_URL = '/api' // Adjust this based on your backend URL
 
-  const response = await fetch(`${API_BASE_URL}${url}`, { ...options, headers })
+export async function uploadVideo(videoData: { title: string; description: string; file: File; userId: number }) {
+  const formData = new FormData()
+  formData.append('title', videoData.title)
+  formData.append('description', videoData.description)
+  formData.append('file', videoData.file)
+  formData.append('userId', videoData.userId.toString())
+
+  const response = await fetch(`${API_BASE_URL}/videos`, {
+    method: 'POST',
+    body: formData,
+  })
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`)
+    throw new Error('Failed to upload video')
   }
 
-  return response.json()
+  return await response.json()
 }
 
-export const api = {
-  login: async (username: string, password: string) => {
-    const response = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    })
-    return response.json()
-  },
+export async function getVideos(): Promise<Video[]> {
+  const response = await fetch(`${API_BASE_URL}/videos`)
+  if (!response.ok) {
+    throw new Error('Failed to fetch videos')
+  }
+  return await response.json()
+}
 
-  getVideos: () => fetchWithAuth('/videos'),
-  getVideo: (id: string) => fetchWithAuth(`/videos/${id}`),
-  createVideo: (data: any) => fetchWithAuth('/videos', { method: 'POST', body: JSON.stringify(data) }),
-  updateVideo: (id: string, data: any) => fetchWithAuth(`/videos/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteVideo: (id: string) => fetchWithAuth(`/videos/${id}`, { method: 'DELETE' }),
+export async function deleteVideo(id: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/videos/${id}`, {
+    method: 'DELETE',
+  })
+  if (!response.ok) {
+    throw new Error('Failed to delete video')
+  }
+}
 
-  getUsers: () => fetchWithAuth('/users'),
-  getUser: (id: string) => fetchWithAuth(`/users/${id}`),
-  createUser: (data: any) => fetchWithAuth('/users', { method: 'POST', body: JSON.stringify(data) }),
-  updateUser: (id: string, data: any) => fetchWithAuth(`/users/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteUser: (id: string) => fetchWithAuth(`/users/${id}`, { method: 'DELETE' }),
+export async function updateVideo(id: number, videoData: Partial<Video>): Promise<Video> {
+  const response = await fetch(`${API_BASE_URL}/videos/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(videoData),
+  })
+  if (!response.ok) {
+    throw new Error('Failed to update video')
+  }
+  return await response.json()
+}
 
-  getActivityLogs: () => fetchWithAuth('/activity-logs'),
+export async function getUsers(): Promise<User[]> {
+  const response = await fetch(`${API_BASE_URL}/users`)
+  if (!response.ok) {
+    throw new Error('Failed to fetch users')
+  }
+  return await response.json()
+}
+
+export async function assignVideoToUser(videoId: number, userId: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/videos/${videoId}/assign`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ userId }),
+  })
+  if (!response.ok) {
+    throw new Error('Failed to assign video to user')
+  }
+}
+
+export async function getActivityLogs(): Promise<ActivityLogEntry[]> {
+  const response = await fetch(`${API_BASE_URL}/activity-log`)
+  if (!response.ok) {
+    throw new Error('Failed to fetch activity logs')
+  }
+  return await response.json()
 }
