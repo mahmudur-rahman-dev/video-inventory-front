@@ -43,23 +43,24 @@ export function UserAssignment() {
       const [videosRes, usersRes, assignmentsRes] = await Promise.all([
         apiClient.get<Video[]>('/videos'),
         apiClient.get<User[]>('/users'),
-        apiClient.get<Assignment[]>('/video-assignments')
+        apiClient.get<Assignment[]>('/videos/assignments')
       ])
 
       if (videosRes.success && usersRes.success && assignmentsRes.success) {
         setVideos(videosRes.data)
         // Filter out admin users
         setUsers(usersRes.data.filter(user => 
-          user.roles.includes('ROLE_USER') && !user.roles.includes('ROLE_ADMIN')
+          user.role && (user.role === 'USER')
         ))
         setAssignments(assignmentsRes.data)
       }
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch assignment data",
-        variant: "destructive",
-      })
+      // toast({
+      //   title: "Error",
+      //   description: "Failed to fetch assignment data",
+      //   variant: "destructive",
+      // })
+      console.log(error)
     } finally {
       setIsLoading(false)
     }

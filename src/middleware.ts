@@ -3,11 +3,7 @@ import type { NextRequest } from 'next/server'
 import { AUTH_CONSTANTS } from '@/lib/auth-constants'
 
 const PUBLIC_PATHS = [
-  '/login', 
-  '/auth/login', 
-  '/auth/refresh-token',
-  '/api/v1/auth/login', 
-  '/api/v1/auth/refresh-token'
+  '/login',
 ]
 
 export function middleware(request: NextRequest) {

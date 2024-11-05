@@ -25,6 +25,7 @@ export const setAuthCookies = (response: AuthenticationResponse) => {
     path: '/'
   })
 
+  console.log('Setting refresh token:', refreshToken)
   // Store refresh token in cookie instead of localStorage
   Cookies.set(AUTH_CONSTANTS.COOKIE_NAMES.REFRESH_TOKEN, refreshToken, {
     expires: AUTH_COOKIE_EXPIRY,
@@ -55,5 +56,7 @@ export const getAccessToken = () => {
 }
 
 export const getRefreshToken = () => {
-  return Cookies.get(AUTH_CONSTANTS.COOKIE_NAMES.REFRESH_TOKEN)
+  const refreshToken = Cookies.get(AUTH_CONSTANTS.COOKIE_NAMES.REFRESH_TOKEN)
+  console.log('Retrieved refresh token:', refreshToken)
+  return refreshToken
 }

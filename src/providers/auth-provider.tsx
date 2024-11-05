@@ -104,7 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAuthState(prev => ({ ...prev, isLoading: true }))
     
     try {
-      // Attempt server-side logout
+      console.log("Attempt server-side logout")
       await authService.logout()
     } catch (error) {
       console.error('Logout error:', error)

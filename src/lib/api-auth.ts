@@ -27,8 +27,8 @@ export const authService = {
 
   async logout(): Promise<void> {
     const refreshToken = getRefreshToken()
+    console.log("refreshToken from logout", refreshToken)
 
-    // If no refresh token exists, just clear cookies and return
     if (!refreshToken) {
       clearAuthCookies()
       return
@@ -49,7 +49,6 @@ export const authService = {
         throw new Error(error.message || 'Logout failed')
       }
     } finally {
-      // Always clear cookies, even if the API call fails
       clearAuthCookies()
     }
   }

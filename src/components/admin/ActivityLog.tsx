@@ -95,14 +95,17 @@ export function ActivityLog() {
           <CardTitle>Activity Log</CardTitle>
           <div className="flex gap-4">
             <Select
-              value={filters.action}
-              onValueChange={(value) => setFilters(prev => ({ ...prev, action: value }))}
+              value={filters.action || 'all'}
+              onValueChange={(value) => setFilters(prev => ({ 
+                ...prev, 
+                action: value === 'all' ? undefined : value 
+              }))}
             >
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Filter by action" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">All Actions</SelectItem>
+                <SelectItem value="all">All Actions</SelectItem>
                 <SelectItem value="viewed">Viewed</SelectItem>
                 <SelectItem value="updated">Updated</SelectItem>
                 <SelectItem value="deleted">Deleted</SelectItem>
@@ -111,7 +114,7 @@ export function ActivityLog() {
             </Select>
 
             <Select
-              value={filters.dateRange}
+              value={filters.dateRange || 'all'}
               onValueChange={(value: 'today' | 'week' | 'month' | 'all') => 
                 setFilters(prev => ({ ...prev, dateRange: value }))
               }

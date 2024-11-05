@@ -3,7 +3,7 @@
 export interface User {
     id: number;
     username: string;
-    roles: string[];
+    role: string;
   }
   
   export interface Video {

@@ -2,44 +2,39 @@
 
 import type { ApiResponse } from '@/types/api';
 
-export class ApiError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-    this.name = 'ApiError';
-  }
+const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
+console.log('API Base URL:', baseUrl);
+
+const createApiError = (status: number, message: string) => {
+  const error = new Error(message);
+  error.name = 'ApiError';
+  (error as any).status = status;
+  return error;
 }
 
-class ApiClient {
-  private baseUrl: string;
-
-  constructor(baseUrl: string) {
-    this.baseUrl = baseUrl;
-    console.log('API Base URL:', this.baseUrl); // For debugging
-  }
-
-  private async handleResponse<T>(response: Response): Promise<ApiResponse<T>> {
-    if (!response.ok) {
-      if (response.status === 401) {
-        // Instead of redirecting immediately, handle the error gracefully
-        console.error('Unauthorized access - redirecting to login')
-        throw new ApiError(response.status, 'Unauthorized')
-      }
-      
-      const error = await response.json().catch(() => ({ message: 'An error occurred' }));
-      throw new ApiError(response.status, error.message || 'An error occurred');
+const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
+  if (!response.ok) {
+    if (response.status === 401) {
+      console.error('Unauthorized access - redirecting to login')
+      throw createApiError(response.status, 'Unauthorized')
     }
-    return response.json();
+    
+    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
+    throw createApiError(response.status, error.message || 'An error occurred');
   }
+  return response.json();
+}
 
-  async get<T>(endpoint: string): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseUrl}/api/v1${endpoint}`, {
+export const apiClient = {
+  get: async <T>(endpoint: string): Promise<ApiResponse<T>> => {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       credentials: 'include',
     });
-    return this.handleResponse<T>(response);
-  }
+    return handleResponse<T>(response);
+  },
 
-  async post<T>(endpoint: string, data?: any): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseUrl}/api/v1${endpoint}`, {
+  post: async <T>(endpoint: string, data?: any): Promise<ApiResponse<T>> => {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -47,11 +42,11 @@ class ApiClient {
       },
       body: data ? JSON.stringify(data) : undefined,
     });
-    return this.handleResponse<T>(response);
-  }
+    return handleResponse<T>(response);
+  },
 
-  async put<T>(endpoint: string, data: any): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseUrl}/api/v1${endpoint}`, {
+  put: async <T>(endpoint: string, data: any): Promise<ApiResponse<T>> => {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'PUT',
       credentials: 'include',
       headers: {
@@ -59,25 +54,23 @@ class ApiClient {
       },
       body: JSON.stringify(data),
     });
-    return this.handleResponse<T>(response);
-  }
+    return handleResponse<T>(response);
+  },
 
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseUrl}/api/v1${endpoint}`, {
+  delete: async <T>(endpoint: string): Promise<ApiResponse<T>> => {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'DELETE',
       credentials: 'include',
     });
-    return this.handleResponse<T>(response);
-  }
+    return handleResponse<T>(response);
+  },
 
-  async upload<T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> {
-    const response = await fetch(`${this.baseUrl}/api/v1${endpoint}`, {
+  upload: async <T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> => {
+    const response = await fetch(`${baseUrl}${endpoint}`, {
       method: 'POST',
       credentials: 'include',
       body: formData,
     });
-    return this.handleResponse<T>(response);
+    return handleResponse<T>(response);
   }
-}
-
-export const apiClient = new ApiClient(process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080');
+};
