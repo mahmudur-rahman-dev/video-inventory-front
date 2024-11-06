@@ -1,11 +1,9 @@
-// src/components/admin/VideoManagement.tsx
 "use client"
 
 import { useMemo, useCallback, useState } from "react"
 import {
   useReactTable,
   getCoreRowModel,
-  getPaginationRowModel,
   ColumnDef,
   flexRender,
 } from "@tanstack/react-table"
@@ -18,10 +16,21 @@ import { apiClient } from "@/lib/api-client"
 import { EditVideoModal, type VideoFormValues } from './modals/EditVideoModal'
 import { ViewVideoModal } from './modals/ViewVideoModal'
 import { DeleteVideoModal } from './modals/DeleteVideoModal'
-import type { Video } from "@/types/api"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import type { Video, ApiResponse, PageInfo } from "@/types/api"
 
 export function VideoManagement() {
-  // State management
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  
+  // Modal states
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -30,11 +39,13 @@ export function VideoManagement() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  // Query and Mutations
-  const { data: videosResponse, isLoading } = useQuery({
-    queryKey: ['videos'],
-    queryFn: () => apiClient.get<Video[]>('/videos'),
-    staleTime: 1000 * 60, // Cache data for 1 minute
+  // Fixed query with proper types
+  const { data: response, isLoading } = useQuery({
+    queryKey: ['videos', { page: currentPage, size: pageSize }],
+    queryFn: async () => {
+      const result = await apiClient.get<Video[]>(`/videos?page=${currentPage}&size=${pageSize}`)
+      return result as ApiResponse<Video[]>
+    },
   })
 
   const updateMutation = useMutation({
@@ -50,7 +61,6 @@ export function VideoManagement() {
       toast({ 
         title: "Success", 
         description: "Video updated successfully",
-        variant: "default",
       })
       setEditDialogOpen(false)
       setSelectedVideo(null)
@@ -65,13 +75,12 @@ export function VideoManagement() {
   })
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => apiClient.delete<void>(`/videos/${id}`),
+    mutationFn: (id: number) => apiClient.delete<void>(`/videos/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['videos'] })
       toast({ 
         title: "Success", 
         description: "Video deleted successfully",
-        variant: "default",
       })
       setDeleteDialogOpen(false)
       setSelectedVideo(null)
@@ -85,7 +94,7 @@ export function VideoManagement() {
     }
   })
 
-  // Memoized event handlers
+  // Event Handlers
   const handleEditClick = useCallback((video: Video) => {
     setSelectedVideo(video)
     setEditDialogOpen(true)
@@ -112,12 +121,21 @@ export function VideoManagement() {
   const handleDelete = useCallback(async () => {
     if (selectedVideo) {
       try {
-        await deleteMutation.mutateAsync(selectedVideo.id)
+        await deleteMutation.mutateAsync(Number(selectedVideo.id))
       } catch (error) {
         console.error('Delete error:', error)
       }
     }
   }, [selectedVideo, deleteMutation])
+
+  const handlePageChange = useCallback((newPage: number) => {
+    setCurrentPage(newPage)
+  }, [])
+
+  const handlePageSizeChange = useCallback((newSize: string) => {
+    setPageSize(Number(newSize))
+    setCurrentPage(0) // Reset to first page when changing page size
+  }, [])
 
   // Memoized columns definition
   const columns = useMemo<ColumnDef<Video>[]>(() => [
@@ -136,6 +154,15 @@ export function VideoManagement() {
       cell: ({ row }) => (
         <div className="max-w-[400px] truncate text-muted-foreground">
           {row.original.description}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: "Created At",
+      cell: ({ row }) => (
+        <div className="text-sm text-muted-foreground">
+          {new Date(row.original.createdAt).toLocaleDateString()}
         </div>
       ),
     },
@@ -171,21 +198,19 @@ export function VideoManagement() {
     },
   ], [handleViewClick, handleEditClick, handleDeleteClick])
 
-  const videos = videosResponse?.data ?? []
-  
+  // Fixed data access with proper type handling
+  const videos = response?.data ?? []
+  const pageInfo = response?.pageInfo
+
   const table = useReactTable({
     data: videos,
     columns,
     getCoreRowModel: getCoreRowModel(),
-    getPaginationRowModel: getPaginationRowModel(),
-    initialState: {
-      pagination: {
-        pageSize: 5,
-      },
-    },
+    manualPagination: true,
+    pageCount: pageInfo?.totalPages ?? -1,
   })
 
-  if (isLoading) {
+  if (isLoading && !videos.length) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -212,7 +237,7 @@ export function VideoManagement() {
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows.length === 0 ? (
+            {videos.length === 0 ? (
               <TableRow>
                 <TableCell 
                   colSpan={columns.length} 
@@ -226,10 +251,7 @@ export function VideoManagement() {
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
                 </TableRow>
@@ -240,30 +262,70 @@ export function VideoManagement() {
       </div>
 
       {/* Pagination Controls */}
-      <div className="flex items-center justify-end space-x-2 py-4">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.previousPage()}
-          disabled={!table.getCanPreviousPage()}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex items-center gap-1">
-          <span className="text-sm font-medium">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
-          </span>
+      {pageInfo && (
+        <div className="flex items-center justify-between py-4">
+          <div className="flex items-center space-x-2">
+            <p className="text-sm text-muted-foreground">
+              Rows per page
+            </p>
+            <Select
+              value={pageSize.toString()}
+              onValueChange={handlePageSizeChange}
+            >
+              <SelectTrigger className="w-[70px]">
+                <SelectValue placeholder={pageSize} />
+              </SelectTrigger>
+              <SelectContent>
+                {[5, 10, 20, 50].map((size) => (
+                  <SelectItem key={size} value={size.toString()}>
+                    {size}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-sm text-muted-foreground">
+              {`${pageInfo.currentPage * pageInfo.pageSize + 1}-${Math.min(
+                (pageInfo.currentPage + 1) * pageInfo.pageSize,
+                pageInfo.totalElements
+              )} of ${pageInfo.totalElements}`}
+            </p>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 0 || isLoading}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            {/* Page numbers */}
+            <div className="flex items-center space-x-1">
+              {pageInfo && Array.from({ length: pageInfo.totalPages }, (_, i) => (
+                <Button
+                  key={i}
+                  variant={currentPage === i ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(i)}
+                  disabled={isLoading}
+                  className="w-8"
+                >
+                  {i + 1}
+                </Button>
+              ))}
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={!pageInfo || currentPage >= pageInfo.totalPages - 1 || isLoading}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => table.nextPage()}
-          disabled={!table.getCanNextPage()}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+      )}
 
       {/* Modals */}
       <DeleteVideoModal

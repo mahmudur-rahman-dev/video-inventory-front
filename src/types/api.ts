@@ -25,18 +25,22 @@ export interface User {
     timestamp: string;
   }
   
+  export interface PageInfo {
+    totalElements: number;
+    totalPages: number;
+    currentPage: number;
+    pageSize: number;
+  }
+  
   export interface ApiResponse<T> {
     data: T;
-    pageInfo?: {
-      currentPage: number;
-      totalPages: number;
-      totalItems: number;
-    };
+    pageInfo: PageInfo;
     success: boolean;
     message: string;
     code: number;
     status: string;
   }
+  
   
   export interface AuthenticationResponse {
     userId: number;

@@ -1,15 +1,30 @@
-// src/lib/api-client.ts
-
 import type { ApiResponse } from '@/types/api';
 
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
 console.log('API Base URL:', baseUrl);
+
+// Add interface for params
+interface QueryParams {
+  [key: string]: string | number | boolean | undefined;
+}
 
 const createApiError = (status: number, message: string) => {
   const error = new Error(message);
   error.name = 'ApiError';
   (error as any).status = status;
   return error;
+}
+
+// Add function to build URL with query parameters
+const buildUrl = (endpoint: string, params?: QueryParams): string => {
+  if (!params) return `${baseUrl}${endpoint}`;
+  
+  const queryParams = Object.entries(params)
+    .filter(([_, value]) => value !== undefined)
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`)
+    .join('&');
+    
+  return `${baseUrl}${endpoint}${queryParams ? `?${queryParams}` : ''}`;
 }
 
 const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
@@ -26,15 +41,15 @@ const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> =>
 }
 
 export const apiClient = {
-  get: async <T>(endpoint: string): Promise<ApiResponse<T>> => {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+  get: async <T>(endpoint: string, params?: QueryParams): Promise<ApiResponse<T>> => {
+    const response = await fetch(buildUrl(endpoint, params), {
       credentials: 'include',
     });
     return handleResponse<T>(response);
   },
 
-  post: async <T>(endpoint: string, data?: any): Promise<ApiResponse<T>> => {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+  post: async <T>(endpoint: string, data?: any, params?: QueryParams): Promise<ApiResponse<T>> => {
+    const response = await fetch(buildUrl(endpoint, params), {
       method: 'POST',
       credentials: 'include',
       headers: {
@@ -45,8 +60,8 @@ export const apiClient = {
     return handleResponse<T>(response);
   },
 
-  put: async <T>(endpoint: string, data: any): Promise<ApiResponse<T>> => {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+  put: async <T>(endpoint: string, data: any, params?: QueryParams): Promise<ApiResponse<T>> => {
+    const response = await fetch(buildUrl(endpoint, params), {
       method: 'PUT',
       credentials: 'include',
       headers: {
@@ -57,16 +72,16 @@ export const apiClient = {
     return handleResponse<T>(response);
   },
 
-  delete: async <T>(endpoint: string): Promise<ApiResponse<T>> => {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+  delete: async <T>(endpoint: string, params?: QueryParams): Promise<ApiResponse<T>> => {
+    const response = await fetch(buildUrl(endpoint, params), {
       method: 'DELETE',
       credentials: 'include',
     });
     return handleResponse<T>(response);
   },
 
-  upload: async <T>(endpoint: string, formData: FormData): Promise<ApiResponse<T>> => {
-    const response = await fetch(`${baseUrl}${endpoint}`, {
+  upload: async <T>(endpoint: string, formData: FormData, params?: QueryParams): Promise<ApiResponse<T>> => {
+    const response = await fetch(buildUrl(endpoint, params), {
       method: 'POST',
       credentials: 'include',
       body: formData,

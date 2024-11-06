@@ -80,8 +80,8 @@ export function UserAssignment() {
 
     try {
       setIsAssigning(true)
-      const response = await apiClient.post<Assignment>('/video-assignments', {
-        videoId: selectedVideo,
+
+      const response = await apiClient.post<Assignment>(`/videos/${selectedVideo}/assign`, null,  {
         userId: parseInt(selectedUser, 10)
       })
 
@@ -107,7 +107,7 @@ export function UserAssignment() {
 
   const handleRemoveAssignment = async (assignmentId: string) => {
     try {
-      const response = await apiClient.delete<void>(`/video-assignments/${assignmentId}`)
+      const response = await apiClient.delete<void>(`/videos/remove-assignment/${assignmentId}`)
       
       if (response.success) {
         setAssignments(prev => prev.filter(a => a.id !== assignmentId))
