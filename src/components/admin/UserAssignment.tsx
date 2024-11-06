@@ -1,8 +1,15 @@
-// src/components/admin/UserAssignment.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import { useMemo, useCallback, useState } from "react"
+import {
+  useReactTable,
+  getCoreRowModel,
+  ColumnDef,
+  flexRender,
+} from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   Select,
   SelectContent,
@@ -11,64 +18,95 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/components/ui/use-toast"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2 } from "lucide-react"
-import type { Video, User } from "@/types/api"
+import { Loader2, UserPlus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
+import type { Video, User, VideoAssignment, ApiResponse } from "@/types/api"
 
-interface Assignment {
-  id: string;
-  videoId: string;
-  userId: number;
-  assignedAt: string;
+interface Assignment extends VideoAssignment {
   video: Video;
   user: User;
 }
 
 export function UserAssignment() {
-  const [videos, setVideos] = useState<Video[]>([])
-  const [users, setUsers] = useState<User[]>([])
-  const [assignments, setAssignments] = useState<Assignment[]>([])
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(0)
+  const [pageSize, setPageSize] = useState(10)
+  
+  // Selection state
   const [selectedVideo, setSelectedVideo] = useState("")
   const [selectedUser, setSelectedUser] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const [isAssigning, setIsAssigning] = useState(false)
   
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
-  const fetchData = async () => {
-    try {
-      setIsLoading(true)
-      const [videosRes, usersRes, assignmentsRes] = await Promise.all([
-        apiClient.get<Video[]>('/videos'),
-        apiClient.get<User[]>('/users'),
-        apiClient.get<Assignment[]>('/videos/assignments')
-      ])
+  // Queries
+  const { data: videosResponse } = useQuery({
+    queryKey: ['videos'],
+    queryFn: () => apiClient.get<Video[]>('/videos')
+  })
 
-      if (videosRes.success && usersRes.success && assignmentsRes.success) {
-        setVideos(videosRes.data)
-        // Filter out admin users
-        setUsers(usersRes.data)
-        setAssignments(assignmentsRes.data)
-      }
-    } catch (error) {
-      // toast({
-      //   title: "Error",
-      //   description: "Failed to fetch assignment data",
-      //   variant: "destructive",
-      // })
-      console.log(error)
-    } finally {
-      setIsLoading(false)
+  const { data: usersResponse } = useQuery({
+    queryKey: ['users'],
+    queryFn: () => apiClient.get<User[]>('/users')
+  })
+
+  const { data: assignmentsResponse, isLoading } = useQuery({
+    queryKey: ['assignments', { page: currentPage, size: pageSize }],
+    queryFn: () => apiClient.get<Assignment[]>(
+      `/videos/assignments`,
+      { page: currentPage, size: pageSize }
+    )
+  })
+
+  // Mutations
+  const assignMutation = useMutation({
+    mutationFn: async () => {
+      return apiClient.post<Assignment>(
+        `/videos/${selectedVideo}/assign`,
+        null,
+        { userId: BigInt(selectedUser).toString() }
+      )
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      toast({
+        title: "Success",
+        description: "Video assigned successfully",
+      })
+      setSelectedVideo("")
+      setSelectedUser("")
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to assign video",
+        variant: "destructive",
+      })
     }
-  }
+  })
 
-  useEffect(() => {
-    fetchData()
-  }, [])
+  const removeMutation = useMutation({
+    mutationFn: (assignmentId: string) => 
+      apiClient.delete<void>(`/videos/remove-assignment/${assignmentId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['assignments'] })
+      toast({
+        title: "Success",
+        description: "Assignment removed successfully",
+      })
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : "Failed to remove assignment",
+        variant: "destructive",
+      })
+    }
+  })
 
-  const handleAssign = async () => {
+  // Event Handlers
+  const handleAssign = useCallback(async () => {
     if (!selectedVideo || !selectedUser) {
       toast({
         title: "Error",
@@ -79,53 +117,83 @@ export function UserAssignment() {
     }
 
     try {
-      setIsAssigning(true)
-
-      const response = await apiClient.post<Assignment>(`/videos/${selectedVideo}/assign`, null,  {
-        userId: parseInt(selectedUser, 10)
-      })
-
-      if (response.success) {
-        setAssignments(prev => [...prev, response.data])
-        toast({
-          title: "Success",
-          description: "Video assigned successfully",
-        })
-        setSelectedVideo("")
-        setSelectedUser("")
-      }
+      await assignMutation.mutateAsync()
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to assign video",
-        variant: "destructive",
-      })
-    } finally {
-      setIsAssigning(false)
+      console.error('Assignment error:', error)
     }
-  }
+  }, [selectedVideo, selectedUser, assignMutation, toast])
 
-  const handleRemoveAssignment = async (assignmentId: string) => {
-    try {
-      const response = await apiClient.delete<void>(`/videos/remove-assignment/${assignmentId}`)
-      
-      if (response.success) {
-        setAssignments(prev => prev.filter(a => a.id !== assignmentId))
-        toast({
-          title: "Success",
-          description: "Assignment removed successfully",
-        })
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to remove assignment",
-        variant: "destructive",
-      })
-    }
-  }
+  const handlePageChange = useCallback((newPage: number) => {
+    setCurrentPage(newPage)
+  }, [])
 
-  if (isLoading) {
+  const handlePageSizeChange = useCallback((newSize: string) => {
+    setPageSize(Number(newSize))
+    setCurrentPage(0)
+  }, [])
+
+  // Table Columns
+  const columns = useMemo<ColumnDef<Assignment>[]>(() => [
+    {
+      accessorKey: "video.title",
+      header: "Video",
+      cell: ({ row }) => (
+        <div className="font-medium max-w-[200px] truncate">
+          {row.original.video.title}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "user.username",
+      header: "Assigned To",
+      cell: ({ row }) => (
+        <div className="max-w-[150px] truncate">
+          {row.original.user.username}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "assignedAt",
+      header: "Assigned At",
+      cell: ({ row }) => (
+        <div className="text-sm text-muted-foreground">
+          {new Date(row.original.assignedAt).toLocaleDateString()}
+        </div>
+      ),
+    },
+    {
+      id: "actions",
+      header: "Action",
+      cell: ({ row }) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => removeMutation.mutate(row.original.id)}
+          disabled={removeMutation.isPending}
+          className="text-slate-900 hover:text-slate-900"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      ),
+    },
+  ], [removeMutation])
+
+  // Get data from responses
+  const videos = videosResponse?.data ?? []
+  const users = usersResponse?.data ?? []
+  const assignments = assignmentsResponse?.data ?? []
+  const pageInfo = assignmentsResponse?.pageInfo
+
+  // Initialize table
+  const table = useReactTable({
+    data: assignments,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true,
+    pageCount: pageInfo?.totalPages ?? -1,
+  })
+
+  if (isLoading && !assignments.length) {
     return (
       <div className="flex justify-center items-center h-64">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -145,7 +213,7 @@ export function UserAssignment() {
             <Select
               value={selectedVideo}
               onValueChange={setSelectedVideo}
-              disabled={isAssigning}
+              disabled={assignMutation.isPending}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a video" />
@@ -168,7 +236,7 @@ export function UserAssignment() {
             <Select
               value={selectedUser}
               onValueChange={setSelectedUser}
-              disabled={isAssigning}
+              disabled={assignMutation.isPending}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Select a user" />
@@ -186,63 +254,131 @@ export function UserAssignment() {
 
         <Button 
           onClick={handleAssign} 
-          disabled={isAssigning || !selectedVideo || !selectedUser}
+          disabled={assignMutation.isPending || !selectedVideo || !selectedUser}
           className="w-full"
         >
-          {isAssigning ? (
+          {assignMutation.isPending ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Assigning...
             </>
           ) : (
-            'Assign Video to User'
+            <>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Assign Video to User
+            </>
           )}
         </Button>
 
-        <div className="mt-8">
-          <h3 className="text-lg font-semibold mb-4">Current Assignments</h3>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Video</TableHead>
-                  <TableHead>Assigned To</TableHead>
-                  <TableHead>Assigned At</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {assignments.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center">
-                      No assignments found
-                    </TableCell>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {assignments.length === 0 ? (
+                <TableRow>
+                  <TableCell 
+                    colSpan={columns.length} 
+                    className="h-24 text-center"
+                  >
+                    No assignments found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </TableCell>
+                    ))}
                   </TableRow>
-                ) : (
-                  assignments.map((assignment) => (
-                    <TableRow key={assignment.id}>
-                      <TableCell>{assignment.video.title}</TableCell>
-                      <TableCell>{assignment.user.username}</TableCell>
-                      <TableCell>
-                        {new Date(assignment.assignedAt).toLocaleDateString()}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => handleRemoveAssignment(assignment.id)}
-                        >
-                          Remove
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                ))
+              )}
+            </TableBody>
+          </Table>
         </div>
+
+        {/* Pagination Controls */}
+        {pageInfo && (
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm text-muted-foreground">
+                Rows per page
+              </p>
+              <Select
+                value={pageSize.toString()}
+                onValueChange={handlePageSizeChange}
+              >
+                <SelectTrigger className="w-[70px]">
+                  <SelectValue placeholder={pageSize} />
+                </SelectTrigger>
+                <SelectContent>
+                  {[5, 10, 20, 50].map((size) => (
+                    <SelectItem key={size} value={size.toString()}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {`${pageInfo.currentPage * pageInfo.pageSize + 1}-${Math.min(
+                  (pageInfo.currentPage + 1) * pageInfo.pageSize,
+                  pageInfo.totalElements
+                )} of ${pageInfo.totalElements}`}
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage <= 0 || isLoading}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              {/* Page numbers */}
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: pageInfo.totalPages }, (_, i) => (
+                  <Button
+                    key={i}
+                    variant={currentPage === i ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(i)}
+                    disabled={isLoading}
+                    className="w-8"
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage >= pageInfo.totalPages - 1 || isLoading}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
