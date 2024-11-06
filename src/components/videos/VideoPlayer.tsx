@@ -1,12 +1,14 @@
-"use client"
-
 import { useState, useRef } from "react"
 import ReactPlayer from "react-player"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
-import { Volume2, VolumeX, Maximize, Minimize } from "lucide-react"
+import { Card } from "@/components/ui/card"
+import { useToast } from "@/components/ui/use-toast"
+import { 
+  Play, Pause, Volume2, VolumeX, Maximize, Minimize 
+} from "lucide-react"
+import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/providers/auth-provider"
-// import { logActivity } from "@/lib/api-client"
 
 interface VideoPlayerProps {
   src: string
@@ -21,12 +23,27 @@ export function VideoPlayer({ src, title, videoId }: VideoPlayerProps) {
   const [isMuted, setIsMuted] = useState(false)
   const [progress, setProgress] = useState(0)
   const [duration, setDuration] = useState(0)
-  const [isFullscreen, setIsFullscreen] = useState(false)
-  const { userRole } = useAuth()
+  const { user } = useAuth()
+  const { toast } = useToast()
 
-  const handlePlay = () => {
+  // Get video URL similar to admin dashboard
+  const getVideoUrl = (videoUrl: string) => {
+    const baseUrl = process.env.NEXT_VIDEO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
+    return `${baseUrl}/uploads/${videoUrl}`;
+  };
+
+  // Log video view when playback starts
+  const handlePlay = async () => {
     setIsPlaying(true)
-    // logActivity(videoId, 'viewed')
+    try {
+      await apiClient.post('/activity-logs', {
+        videoId,
+        action: 'viewed',
+        userId: user?.id
+      })
+    } catch (error) {
+      console.error('Failed to log video view:', error)
+    }
   }
 
   const handlePause = () => {
@@ -51,15 +68,6 @@ export function VideoPlayer({ src, title, videoId }: VideoPlayerProps) {
     setVolume(isMuted ? 0.5 : 0)
   }
 
-  const toggleFullscreen = () => {
-    if (!isFullscreen) {
-      playerRef.current?.getInternalPlayer()?.requestFullscreen()
-    } else {
-      document.exitFullscreen()
-    }
-    setIsFullscreen(!isFullscreen)
-  }
-
   const formatTime = (seconds: number) => {
     const date = new Date(seconds * 1000)
     const hh = date.getUTCHours()
@@ -72,12 +80,11 @@ export function VideoPlayer({ src, title, videoId }: VideoPlayerProps) {
   }
 
   return (
-    <div className="w-full max-w-3xl mx-auto bg-gray-100 rounded-lg overflow-hidden shadow-lg">
-      <h2 className="text-2xl font-bold p-4 bg-gray-200">{title}</h2>
-      <div className="relative aspect-video">
+    <Card className="overflow-hidden">
+      <div className="relative aspect-video bg-black">
         <ReactPlayer
           ref={playerRef}
-          url={src}
+          url={getVideoUrl(src)}
           width="100%"
           height="100%"
           playing={isPlaying}
@@ -90,18 +97,14 @@ export function VideoPlayer({ src, title, videoId }: VideoPlayerProps) {
           config={{
             file: {
               attributes: {
-                controlsList: 'nodownload'
+                controlsList: 'nodownload',
+                disablePictureInPicture: true,
               }
             }
           }}
         />
-        <div className="absolute bottom-0 left-0 right-0 bg-gray-800 bg-opacity-50 text-white p-2">
-          <div className="flex items-center justify-between mb-2">
-            <Button variant="ghost" size="sm" onClick={() => setIsPlaying(!isPlaying)}>
-              {isPlaying ? 'Pause' : 'Play'}
-            </Button>
-            <span>{formatTime(progress * duration / 100)} / {formatTime(duration)}</span>
-          </div>
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
+          {/* Progress bar */}
           <Slider
             value={[progress]}
             max={100}
@@ -110,32 +113,54 @@ export function VideoPlayer({ src, title, videoId }: VideoPlayerProps) {
               const [newProgress] = value
               playerRef.current?.seekTo(newProgress / 100)
             }}
-            className="w-full"
+            className="mb-4"
           />
-          <div className="flex items-center justify-between mt-2">
-            <div className="flex items-center">
-              <Button variant="ghost" size="sm" onClick={toggleMute}>
-                {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
+          
+          {/* Controls */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setIsPlaying(!isPlaying)}
+                className="text-white hover:text-white"
+              >
+                {isPlaying ? (
+                  <Pause className="h-4 w-4" />
+                ) : (
+                  <Play className="h-4 w-4" />
+                )}
               </Button>
-              <Slider
-                value={[volume * 100]}
-                max={100}
-                step={1}
-                onValueChange={(value) => handleVolumeChange([value[0] / 100])}
-                className="w-24 ml-2"
-              />
+
+              <div className="flex items-center space-x-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleMute}
+                  className="text-white hover:text-white"
+                >
+                  {isMuted ? (
+                    <VolumeX className="h-4 w-4" />
+                  ) : (
+                    <Volume2 className="h-4 w-4" />
+                  )}
+                </Button>
+                <Slider
+                  value={[volume * 100]}
+                  max={100}
+                  step={1}
+                  className="w-24"
+                  onValueChange={(value) => handleVolumeChange([value[0] / 100])}
+                />
+              </div>
+
+              <span className="text-white text-sm">
+                {formatTime(progress * duration / 100)} / {formatTime(duration)}
+              </span>
             </div>
-            <Button variant="ghost" size="sm" onClick={toggleFullscreen}>
-              {isFullscreen ? <Minimize size={20} /> : <Maximize size={20} />}
-            </Button>
           </div>
         </div>
       </div>
-      {userRole === 'admin' && (
-        <div className="p-4 bg-gray-200">
-          <p className="text-sm text-gray-600">Admin: Video ID {videoId}</p>
-        </div>
-      )}
-    </div>
+    </Card>
   )
 }

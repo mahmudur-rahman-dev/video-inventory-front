@@ -1,7 +1,12 @@
-// src/components/admin/ActivityLog.tsx
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useMemo, useCallback, useState, useEffect } from "react"
+import {
+  useReactTable,
+  getCoreRowModel,
+  ColumnDef,
+  flexRender,
+} from "@tanstack/react-table"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
@@ -11,95 +16,159 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useToast } from "@/components/ui/use-toast"
-import { apiClient } from "@/lib/api-client"
-import { Loader2 } from "lucide-react"
-import type { ActivityLogEntry } from "@/types/api"
 import { Input } from "@/components/ui/input"
+import { useQuery } from "@tanstack/react-query"
+import { apiClient } from "@/lib/api-client"
+import { Loader2, ChevronLeft, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import type { ActivityLogEntry, ApiResponse } from "@/types/api"
+import { useDebounce } from "@/hooks/use-debounce"
 
-interface ActivityFilter {
+// Interface for filters
+interface ActivityFilters {
   action?: string;
-  userId?: string;
-  videoId?: string;
-  dateRange?: 'today' | 'week' | 'month' | 'all';
+  username?: string;
+  page: number;
+  pageSize: number;
 }
 
+// Change to named export
 export function ActivityLog() {
-  const [logs, setLogs] = useState<ActivityLogEntry[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [filters, setFilters] = useState<ActivityFilter>({
-    dateRange: 'all'
+  // ... rest of the component code remains the same ...
+  
+  // State management
+  const [filters, setFilters] = useState<ActivityFilters>({
+    page: 0,
+    pageSize: 10,
   })
-  const { toast } = useToast()
+  
+  // Search input state
+  const [searchInput, setSearchInput] = useState("")
+  const debouncedSearch = useDebounce(searchInput, 500)
 
-  const fetchLogs = async () => {
-    try {
-      setIsLoading(true)
-      // Construct query params based on filters
-      const params = new URLSearchParams()
-      if (filters.action) params.append('action', filters.action)
-      if (filters.userId) params.append('userId', filters.userId)
-      if (filters.videoId) params.append('videoId', filters.videoId)
-      if (filters.dateRange && filters.dateRange !== 'all') {
-        params.append('dateRange', filters.dateRange)
-      }
-
-      const response = await apiClient.get<ActivityLogEntry[]>(`/activity-logs?${params}`)
-      if (response.success) {
-        setLogs(response.data)
-      }
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to fetch activity logs",
-        variant: "destructive",
-      })
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
+  // Update username filter when debounced search changes
   useEffect(() => {
-    fetchLogs()
-  }, [filters])
+    setFilters(prev => ({
+      ...prev,
+      username: debouncedSearch || undefined,
+      page: 0, // Reset to first page on search
+    }))
+  }, [debouncedSearch])
 
-  const getActionColor = (action: string) => {
-    switch (action) {
-      case 'viewed':
-        return 'text-blue-600'
-      case 'updated':
-        return 'text-amber-600'
-      case 'deleted':
-        return 'text-red-600'
-      case 'assigned':
-        return 'text-green-600'
-      default:
-        return 'text-gray-600'
-    }
-  }
+  // Fetch activity logs with filters
+  const { data: response, isLoading } = useQuery({
+    queryKey: ['activity-logs', filters],
+    queryFn: async () => {
+      const params: Record<string, string> = {
+        page: filters.page.toString(),
+        size: filters.pageSize.toString(),
+      }
+      
+      if (filters.action) params.action = filters.action
+      if (filters.username) params.username = filters.username
 
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    })
+      return apiClient.get<ActivityLogEntry[]>('/activity-logs', params)
+    },
+  })
+
+  // Table columns definition
+  const columns = useMemo<ColumnDef<ActivityLogEntry>[]>(() => [
+    {
+      accessorKey: "username",
+      header: "User",
+      cell: ({ row }) => (
+        <div className="font-medium">{row.original.username}</div>
+      ),
+    },
+    {
+      accessorKey: "action",
+      header: "Action",
+      cell: ({ row }) => {
+        const actionColors = {
+          viewed: "text-blue-600",
+          updated: "text-amber-600",
+          deleted: "text-red-600",
+          assigned: "text-green-600",
+        }
+        const action = row.original.action
+        return (
+          <div className={actionColors[action]}>
+            {action.charAt(0).toUpperCase() + action.slice(1)}
+          </div>
+        )
+      },
+    },
+    {
+      accessorKey: "videoTitle",
+      header: "Video",
+      cell: ({ row }) => (
+        <div className="max-w-[300px] truncate">
+          {row.original.videoTitle}
+        </div>
+      ),
+    },
+    {
+      accessorKey: "timestamp",
+      header: "Timestamp",
+      cell: ({ row }) => (
+        <div className="text-sm text-muted-foreground">
+          {new Date(row.original.timestamp).toLocaleString()}
+        </div>
+      ),
+    },
+  ], [])
+
+  // Event handlers
+  const handlePageChange = useCallback((newPage: number) => {
+    setFilters(prev => ({ ...prev, page: newPage }))
+  }, [])
+
+  const handlePageSizeChange = useCallback((newSize: string) => {
+    setFilters(prev => ({
+      ...prev,
+      pageSize: parseInt(newSize, 10),
+      page: 0, // Reset to first page when changing page size
+    }))
+  }, [])
+
+  const handleActionFilterChange = useCallback((action: string) => {
+    setFilters(prev => ({
+      ...prev,
+      action: action === 'all' ? undefined : action,
+      page: 0, // Reset to first page when changing filter
+    }))
+  }, [])
+
+  // Get data from response
+  const logs = response?.data ?? []
+  const pageInfo = response?.pageInfo
+
+  // Initialize table
+  const table = useReactTable({
+    data: logs,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+    manualPagination: true,
+    pageCount: pageInfo?.totalPages ?? -1,
+  })
+
+  if (isLoading && !logs.length) {
+    return (
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    )
   }
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <CardTitle>Activity Log</CardTitle>
-          <div className="flex gap-4">
+          <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
             <Select
               value={filters.action || 'all'}
-              onValueChange={(value) => setFilters(prev => ({ 
-                ...prev, 
-                action: value === 'all' ? undefined : value 
-              }))}
+              onValueChange={handleActionFilterChange}
             >
               <SelectTrigger className="w-[150px]">
                 <SelectValue placeholder="Filter by action" />
@@ -113,77 +182,122 @@ export function ActivityLog() {
               </SelectContent>
             </Select>
 
-            <Select
-              value={filters.dateRange || 'all'}
-              onValueChange={(value: 'today' | 'week' | 'month' | 'all') => 
-                setFilters(prev => ({ ...prev, dateRange: value }))
-              }
-            >
-              <SelectTrigger className="w-[150px]">
-                <SelectValue placeholder="Date range" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Today</SelectItem>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-                <SelectItem value="all">All Time</SelectItem>
-              </SelectContent>
-            </Select>
-
             <Input
-              placeholder="Search by user or video"
-              className="max-w-[200px]"
-              onChange={(e) => {
-                const value = e.target.value
-                setFilters(prev => ({
-                  ...prev,
-                  userId: value,
-                  videoId: value
-                }))
-              }}
+              placeholder="Search by username"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full md:w-[200px]"
             />
           </div>
         </div>
       </CardHeader>
       <CardContent>
-        {isLoading ? (
-          <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin" />
-          </div>
-        ) : (
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>User</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Video</TableHead>
-                  <TableHead>Timestamp</TableHead>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <TableRow key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <TableHead key={header.id}>
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </TableHead>
+                  ))}
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {logs.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={4} className="text-center">
-                      No activity logs found
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  logs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell>{log.username}</TableCell>
-                      <TableCell>
-                        <span className={getActionColor(log.action)}>
-                          {log.action.charAt(0).toUpperCase() + log.action.slice(1)}
-                        </span>
+              ))}
+            </TableHeader>
+            <TableBody>
+              {logs.length === 0 ? (
+                <TableRow>
+                  <TableCell 
+                    colSpan={columns.length} 
+                    className="h-24 text-center"
+                  >
+                    No activity logs found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                table.getRowModel().rows.map((row) => (
+                  <TableRow key={row.id}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
                       </TableCell>
-                      <TableCell>{log.videoTitle}</TableCell>
-                      <TableCell>{formatDate(log.timestamp)}</TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Pagination Controls */}
+        {pageInfo && (
+          <div className="flex items-center justify-between py-4">
+            <div className="flex items-center space-x-2">
+              <p className="text-sm text-muted-foreground">
+                Rows per page
+              </p>
+              <Select
+                value={filters.pageSize.toString()}
+                onValueChange={handlePageSizeChange}
+              >
+                <SelectTrigger className="w-[70px]">
+                  <SelectValue placeholder={filters.pageSize} />
+                </SelectTrigger>
+                <SelectContent>
+                  {[5, 10, 20, 50].map((size) => (
+                    <SelectItem key={size} value={size.toString()}>
+                      {size}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-sm text-muted-foreground">
+                {`${pageInfo.currentPage * pageInfo.pageSize + 1}-${Math.min(
+                  (pageInfo.currentPage + 1) * pageInfo.pageSize,
+                  pageInfo.totalElements
+                )} of ${pageInfo.totalElements}`}
+              </p>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(filters.page - 1)}
+                disabled={filters.page <= 0 || isLoading}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="flex items-center space-x-1">
+                {Array.from({ length: pageInfo.totalPages }, (_, i) => (
+                  <Button
+                    key={i}
+                    variant={filters.page === i ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => handlePageChange(i)}
+                    disabled={isLoading}
+                    className="w-8"
+                  >
+                    {i + 1}
+                  </Button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(filters.page + 1)}
+                disabled={filters.page >= pageInfo.totalPages - 1 || isLoading}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

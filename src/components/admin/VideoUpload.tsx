@@ -1,7 +1,6 @@
-// src/components/admin/VideoUpload.tsx
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -26,6 +25,9 @@ export function VideoUpload() {
     isUploading: false,
     progress: 0,
   })
+  
+  // Add ref for the file input
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { toast } = useToast()
   const queryClient = useQueryClient()
@@ -57,6 +59,10 @@ export function VideoUpload() {
         setTitle("")
         setDescription("")
         setFile(null)
+        // Reset file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = ""
+        }
       } else {
         throw new Error(response.message)
       }
@@ -110,6 +116,7 @@ export function VideoUpload() {
           <Label htmlFor="video">Video File</Label>
           <Input
             id="video"
+            ref={fileInputRef}
             type="file"
             accept="video/*"
             onChange={(e) => setFile(e.target.files?.[0] || null)}
