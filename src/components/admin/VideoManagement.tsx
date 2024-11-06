@@ -1,7 +1,7 @@
 // src/components/admin/VideoManagement.tsx
 "use client"
 
-import { useState } from "react"
+import { useMemo, useCallback, useState } from "react"
 import {
   useReactTable,
   getCoreRowModel,
@@ -15,119 +15,26 @@ import { Pencil, Trash2, Eye, Loader2, ChevronLeft, ChevronRight } from "lucide-
 import { useToast } from "@/components/ui/use-toast"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import * as z from "zod"
-import ReactPlayer from 'react-player'
+import { EditVideoModal, type VideoFormValues } from './modals/EditVideoModal'
+import { ViewVideoModal } from './modals/ViewVideoModal'
+import { DeleteVideoModal } from './modals/DeleteVideoModal'
 import type { Video } from "@/types/api"
 
-// Form validation schema
-const videoFormSchema = z.object({
-  title: z.string().min(1, "Title is required").max(100, "Title is too long"),
-  description: z.string().min(1, "Description is required").max(500, "Description is too long"),
-})
-
-type VideoFormValues = z.infer<typeof videoFormSchema>
-
-// Video Player Component
-const VideoPlayer = ({ src, title }: { src: string; title: string }) => {
-  const { toast } = useToast()
-  
-  return (
-    <div className="aspect-video relative rounded-lg overflow-hidden bg-black">
-      <ReactPlayer
-        url={src}
-        width="100%"
-        height="100%"
-        controls
-        playsinline
-        config={{
-          file: {
-            attributes: {
-              controlsList: 'nodownload',
-              disablePictureInPicture: true,
-              playsInline: true,
-              crossOrigin: "anonymous",
-            },
-            forceVideo: true,
-            forceHLS: false,
-            forceDASH: false,
-          }
-        }}
-        onContextMenu={(e: React.MouseEvent) => e.preventDefault()}
-        onError={(e) => {
-          console.error('Video playback error:', e);
-          toast({
-            title: "Playback Error",
-            description: "Failed to load video. Please try again.",
-            variant: "destructive",
-          });
-        }}
-      />
-    </div>
-  )
-}
-
 export function VideoManagement() {
+  // State management
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [viewDialogOpen, setViewDialogOpen] = useState(false)
+  
   const { toast } = useToast()
   const queryClient = useQueryClient()
-
-  // Form setup
-  const form = useForm<VideoFormValues>({
-    resolver: zodResolver(videoFormSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-    },
-  })
-
-  // Reset form and set video data when opening edit modal
-  const handleEditClick = (video: Video) => {
-    setSelectedVideo(video)
-    form.reset({
-      title: video.title,
-      description: video.description,
-    })
-    setEditDialogOpen(true)
-  }
-
-  // Function to get correct video URL
-  const getVideoUrl = (videoUrl: string | undefined) => {
-    if (!videoUrl) return '';
-    
-    const baseUrl = process.env.NEXT_VIDEO_PUBLIC_API_BASE_URL || 'http://localhost:8080';
-    return `${baseUrl}/uploads/${videoUrl}`;
-  };
 
   // Query and Mutations
   const { data: videosResponse, isLoading } = useQuery({
     queryKey: ['videos'],
-    queryFn: () => apiClient.get<Video[]>('/videos')
+    queryFn: () => apiClient.get<Video[]>('/videos'),
+    staleTime: 1000 * 60, // Cache data for 1 minute
   })
 
   const updateMutation = useMutation({
@@ -146,7 +53,6 @@ export function VideoManagement() {
         variant: "default",
       })
       setEditDialogOpen(false)
-      form.reset()
       setSelectedVideo(null)
     },
     onError: (error) => {
@@ -179,17 +85,42 @@ export function VideoManagement() {
     }
   })
 
-  // Handle form submission
-  const onSubmit = async (data: VideoFormValues) => {
+  // Memoized event handlers
+  const handleEditClick = useCallback((video: Video) => {
+    setSelectedVideo(video)
+    setEditDialogOpen(true)
+  }, [])
+
+  const handleViewClick = useCallback((video: Video) => {
+    setSelectedVideo(video)
+    setViewDialogOpen(true)
+  }, [])
+
+  const handleDeleteClick = useCallback((video: Video) => {
+    setSelectedVideo(video)
+    setDeleteDialogOpen(true)
+  }, [])
+
+  const handleUpdate = useCallback(async (data: VideoFormValues) => {
     try {
       await updateMutation.mutateAsync(data)
     } catch (error) {
       console.error('Form submission error:', error)
     }
-  }
+  }, [updateMutation])
 
-  // Table Columns Definition
-  const columns: ColumnDef<Video>[] = [
+  const handleDelete = useCallback(async () => {
+    if (selectedVideo) {
+      try {
+        await deleteMutation.mutateAsync(selectedVideo.id)
+      } catch (error) {
+        console.error('Delete error:', error)
+      }
+    }
+  }, [selectedVideo, deleteMutation])
+
+  // Memoized columns definition
+  const columns = useMemo<ColumnDef<Video>[]>(() => [
     {
       accessorKey: "title",
       header: "Title",
@@ -215,10 +146,7 @@ export function VideoManagement() {
           <Button 
             variant="ghost" 
             size="icon"
-            onClick={() => {
-              setSelectedVideo(row.original)
-              setViewDialogOpen(true)
-            }}
+            onClick={() => handleViewClick(row.original)}
           >
             <Eye className="h-4 w-4" />
           </Button>
@@ -234,17 +162,14 @@ export function VideoManagement() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => {
-              setSelectedVideo(row.original)
-              setDeleteDialogOpen(true)
-            }}
+            onClick={() => handleDeleteClick(row.original)}
           >
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       ),
     },
-  ]
+  ], [handleViewClick, handleEditClick, handleDeleteClick])
 
   const videos = videosResponse?.data ?? []
   
@@ -259,113 +184,6 @@ export function VideoManagement() {
       },
     },
   })
-
-  // Video Player Dialog
-  const ViewDialog = () => (
-    <Dialog 
-      open={viewDialogOpen} 
-      onOpenChange={(open) => {
-        if (!open) {
-          setSelectedVideo(null)
-        }
-        setViewDialogOpen(open)
-      }}
-    >
-      <DialogContent className="max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>{selectedVideo?.title}</DialogTitle>
-        </DialogHeader>
-        {selectedVideo && (
-          <div className="mt-4">
-            <VideoPlayer
-              src={getVideoUrl(selectedVideo.videoUrl)}
-              title={selectedVideo.title}
-            />
-            <div className="mt-4 text-sm text-muted-foreground">
-              {selectedVideo.description}
-            </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
-  )
-
-  // Edit Dialog
-  const EditDialog = () => (
-    <Dialog 
-      open={editDialogOpen} 
-      onOpenChange={(open) => {
-        if (!open) {
-          form.reset()
-          setSelectedVideo(null)
-        }
-        setEditDialogOpen(open)
-      }}
-    >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Edit Video</DialogTitle>
-        </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Title</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="Enter video title" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description</FormLabel>
-                  <FormControl>
-                    <Textarea 
-                      {...field} 
-                      placeholder="Enter video description"
-                      className="resize-none"
-                      rows={4}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setEditDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit"
-                disabled={updateMutation.isPending || !form.formState.isDirty}
-              >
-                {updateMutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating...
-                  </>
-                ) : (
-                  'Update'
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
-      </DialogContent>
-    </Dialog>
-  )
 
   if (isLoading) {
     return (
@@ -447,37 +265,28 @@ export function VideoManagement() {
         </Button>
       </div>
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete
-              &quot;{selectedVideo?.title}&quot; and remove it from the servers.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => selectedVideo && deleteMutation.mutate(selectedVideo.id)}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              {deleteMutation.isPending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                'Delete'
-              )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Modals */}
+      <DeleteVideoModal
+        video={selectedVideo}
+        isOpen={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        onDelete={handleDelete}
+        isDeleting={deleteMutation.isPending}
+      />
 
-      <ViewDialog />
-      <EditDialog />
+      <ViewVideoModal
+        video={selectedVideo}
+        isOpen={viewDialogOpen}
+        onOpenChange={setViewDialogOpen}
+      />
+
+      <EditVideoModal
+        video={selectedVideo}
+        isOpen={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        onSubmit={handleUpdate}
+        isUpdating={updateMutation.isPending}
+      />
     </div>
   )
 }
