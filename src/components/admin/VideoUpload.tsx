@@ -11,6 +11,7 @@ import { useAuth } from "@/providers/auth-provider"
 import { useToast } from "@/components/ui/use-toast"
 import { apiClient } from "@/lib/api-client"
 import { Progress } from "@/components/ui/progress"
+import { useQueryClient } from "@tanstack/react-query"
 
 interface UploadState {
   isUploading: boolean
@@ -27,6 +28,7 @@ export function VideoUpload() {
   })
 
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -43,6 +45,9 @@ export function VideoUpload() {
       const response = await apiClient.upload<{ id: string }>('/videos/upload', formData)
 
       if (response.success) {
+        // Immediately invalidate and refetch videos
+        await queryClient.invalidateQueries({ queryKey: ['videos'] })
+        
         toast({
           title: "Success",
           description: "Video uploaded successfully",

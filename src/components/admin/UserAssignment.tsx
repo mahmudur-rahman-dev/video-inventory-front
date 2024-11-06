@@ -49,9 +49,7 @@ export function UserAssignment() {
       if (videosRes.success && usersRes.success && assignmentsRes.success) {
         setVideos(videosRes.data)
         // Filter out admin users
-        setUsers(usersRes.data.filter(user => 
-          user.role && (user.role === 'USER')
-        ))
+        setUsers(usersRes.data)
         setAssignments(assignmentsRes.data)
       }
     } catch (error) {

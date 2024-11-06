@@ -3,7 +3,7 @@
 export interface User {
     id: number;
     username: string;
-    role: string;
+    role?: string;
   }
   
   export interface Video {
@@ -11,9 +11,8 @@ export interface User {
     title: string;
     description: string;
     videoUrl: string;
-    assignedToUserId?: number;
     createdAt: string;
-    updatedAt: string;
+    modificationDate: string;
   }
   
   export interface ActivityLogEntry {

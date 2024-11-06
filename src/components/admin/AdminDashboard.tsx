@@ -12,9 +12,10 @@ import { Heading } from "@/components/ui/heading"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/providers/auth-provider"
 import { UserPlus, FileVideo, ListVideo, ActivitySquare } from "lucide-react"
+import { useLocalStorage } from "@/hooks/use-local-storage" // We'll create this hook
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useState("upload")
+  const [activeTab, setActiveTab] = useLocalStorage("admin-dashboard-tab", "upload")
   const { isAuthenticated, user, logout } = useAuth()
   const router = useRouter()
 
@@ -32,13 +33,17 @@ export default function AdminDashboard() {
     }
   }
 
+  const handleTabChange = (value: string) => {
+    setActiveTab(value)
+  }
+
   return (
     <Container>
       <div className="flex justify-between items-center mb-6">
         <Heading title="Admin Dashboard" description={`Welcome, ${user?.username}`} />
         <Button onClick={handleLogout}>Logout</Button>
       </div>
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="grid grid-cols-4 gap-4">
           <TabsTrigger value="upload" className="flex items-center gap-2">
             <FileVideo className="h-4 w-4" />
