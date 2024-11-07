@@ -122,10 +122,10 @@ export function VideoPlayer({
   }, [src])
 
   // Get video URL
-  const getVideoUrl = useCallback((videoUrl: string) => {
+  const getVideoUrl = (videoUrl: string) => {
     const baseUrl = process.env.NEXT_PUBLIC_VIDEO_API_BASE_URL || 'http://localhost:8080'
     return `${baseUrl}/uploads/${videoUrl}`
-  }, [])
+  }
 
   // Handle play/pause
   const handlePlayPause = useCallback(() => {

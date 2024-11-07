@@ -60,6 +60,7 @@ export function VideoPlayerWithList({
       {/* Main Video Player Area */}
       <div className="lg:col-span-3 space-y-4">
         <VideoPlayer
+          key={selectedVideo.id} // Add this line
           src={selectedVideo.videoUrl}
           title={selectedVideo.title}
           videoId={selectedVideo.id}
