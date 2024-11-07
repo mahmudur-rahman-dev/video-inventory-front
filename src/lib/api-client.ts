@@ -1,8 +1,18 @@
+// src/lib/api-client.ts
+
 import type { ApiResponse } from '@/types/api';
 
-const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
-console.log('API Base URL:', baseUrl);
+// Get the appropriate base URL depending on the environment
+const getBaseUrl = () => {
+  if (typeof window === 'undefined') {
+    // Server-side requests
+    return process.env.NEXT_INTERNAL_API_BASE_URL || 'http://backend:8080/api/v1';
+  }
+  // Client-side requests
+  return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
+};
 
+// Add interface for params
 interface QueryParams {
   [key: string]: string | number | boolean | undefined;
 }
@@ -12,9 +22,12 @@ const createApiError = (status: number, message: string) => {
   error.name = 'ApiError';
   (error as any).status = status;
   return error;
-}
+};
 
+// Add function to build URL with query parameters
 const buildUrl = (endpoint: string, params?: QueryParams): string => {
+  const baseUrl = getBaseUrl();
+  
   if (!params) return `${baseUrl}${endpoint}`;
   
   const queryParams = Object.entries(params)
@@ -23,20 +36,20 @@ const buildUrl = (endpoint: string, params?: QueryParams): string => {
     .join('&');
     
   return `${baseUrl}${endpoint}${queryParams ? `?${queryParams}` : ''}`;
-}
+};
 
 const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
   if (!response.ok) {
     if (response.status === 401) {
-      console.error('Unauthorized access - redirecting to login')
-      throw createApiError(response.status, 'Unauthorized')
+      console.error('Unauthorized access - redirecting to login');
+      throw createApiError(response.status, 'Unauthorized');
     }
     
     const error = await response.json().catch(() => ({ message: 'An error occurred' }));
     throw createApiError(response.status, error.message || 'An error occurred');
   }
   return response.json();
-}
+};
 
 export const apiClient = {
   get: async <T>(endpoint: string, params?: QueryParams): Promise<ApiResponse<T>> => {
@@ -85,5 +98,5 @@ export const apiClient = {
       body: formData,
     });
     return handleResponse<T>(response);
-  }
+  },
 };

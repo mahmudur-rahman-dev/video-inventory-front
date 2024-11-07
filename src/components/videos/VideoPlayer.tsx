@@ -128,7 +128,18 @@ export function VideoPlayer({
   }, [src])
 
   const getVideoUrl = (videoUrl: string) => {
-    const baseUrl = process.env.NEXT_PUBLIC_VIDEO_API_BASE_URL || 'http://localhost:8080'
+    // Default URLs
+    const DEFAULT_SERVER_URL = 'http://backend:8080'
+    const DEFAULT_CLIENT_URL = 'http://localhost:8080'
+    
+    if (typeof window === 'undefined') {
+      // Server-side
+      const baseUrl = process.env.NEXT_INTERNAL_VIDEO_API_BASE_URL || DEFAULT_SERVER_URL
+      return `${baseUrl}/uploads/${videoUrl}`
+    }
+    
+    // Client-side
+    const baseUrl = process.env.NEXT_PUBLIC_VIDEO_API_BASE_URL || DEFAULT_CLIENT_URL
     return `${baseUrl}/uploads/${videoUrl}`
   }
 
