@@ -24,7 +24,6 @@ import { Button } from "@/components/ui/button"
 import type { ActivityLogEntry, ApiResponse } from "@/types/api"
 import { useDebounce } from "@/hooks/use-debounce"
 
-// Interface for filters
 interface ActivityFilters {
   action?: string;
   username?: string;
@@ -32,30 +31,23 @@ interface ActivityFilters {
   pageSize: number;
 }
 
-// Change to named export
 export function ActivityLog() {
-  // ... rest of the component code remains the same ...
-  
-  // State management
   const [filters, setFilters] = useState<ActivityFilters>({
     page: 0,
     pageSize: 10,
   })
   
-  // Search input state
   const [searchInput, setSearchInput] = useState("")
   const debouncedSearch = useDebounce(searchInput, 500)
 
-  // Update username filter when debounced search changes
   useEffect(() => {
     setFilters(prev => ({
       ...prev,
       username: debouncedSearch || undefined,
-      page: 0, // Reset to first page on search
+      page: 0,
     }))
   }, [debouncedSearch])
 
-  // Fetch activity logs with filters
   const { data: response, isLoading } = useQuery({
     queryKey: ['activity-logs', filters],
     queryFn: async () => {
@@ -71,7 +63,6 @@ export function ActivityLog() {
     },
   })
 
-  // Table columns definition
   const columns = useMemo<ColumnDef<ActivityLogEntry>[]>(() => [
     {
       accessorKey: "username",
@@ -118,7 +109,6 @@ export function ActivityLog() {
     },
   ], [])
 
-  // Event handlers
   const handlePageChange = useCallback((newPage: number) => {
     setFilters(prev => ({ ...prev, page: newPage }))
   }, [])
@@ -127,7 +117,7 @@ export function ActivityLog() {
     setFilters(prev => ({
       ...prev,
       pageSize: parseInt(newSize, 10),
-      page: 0, // Reset to first page when changing page size
+      page: 0, 
     }))
   }, [])
 
@@ -135,15 +125,13 @@ export function ActivityLog() {
     setFilters(prev => ({
       ...prev,
       action: action === 'all' ? undefined : action,
-      page: 0, // Reset to first page when changing filter
+      page: 0, 
     }))
   }, [])
 
-  // Get data from response
   const logs = response?.data ?? []
   const pageInfo = response?.pageInfo
 
-  // Initialize table
   const table = useReactTable({
     data: logs,
     columns,

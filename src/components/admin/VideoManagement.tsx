@@ -26,11 +26,9 @@ import {
 import type { Video, ApiResponse, PageInfo } from "@/types/api"
 
 export function VideoManagement() {
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(0)
   const [pageSize, setPageSize] = useState(10)
   
-  // Modal states
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [editDialogOpen, setEditDialogOpen] = useState(false)
@@ -39,7 +37,6 @@ export function VideoManagement() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  // Fixed query with proper types
   const { data: response, isLoading } = useQuery({
     queryKey: ['videos', { page: currentPage, size: pageSize }],
     queryFn: async () => {
@@ -94,7 +91,6 @@ export function VideoManagement() {
     }
   })
 
-  // Event Handlers
   const handleEditClick = useCallback((video: Video) => {
     setSelectedVideo(video)
     setEditDialogOpen(true)
@@ -134,10 +130,10 @@ export function VideoManagement() {
 
   const handlePageSizeChange = useCallback((newSize: string) => {
     setPageSize(Number(newSize))
-    setCurrentPage(0) // Reset to first page when changing page size
+    setCurrentPage(0) 
   }, [])
 
-  // Memoized columns definition
+  
   const columns = useMemo<ColumnDef<Video>[]>(() => [
     {
       accessorKey: "title",
@@ -198,7 +194,6 @@ export function VideoManagement() {
     },
   ], [handleViewClick, handleEditClick, handleDeleteClick])
 
-  // Fixed data access with proper type handling
   const videos = response?.data ?? []
   const pageInfo = response?.pageInfo
 

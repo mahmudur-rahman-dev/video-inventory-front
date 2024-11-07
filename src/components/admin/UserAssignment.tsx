@@ -29,18 +29,15 @@ interface Assignment extends VideoAssignment {
 }
 
 export function UserAssignment() {
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(0)
   const [pageSize, setPageSize] = useState(10)
   
-  // Selection state
   const [selectedVideo, setSelectedVideo] = useState("")
   const [selectedUser, setSelectedUser] = useState("")
   
   const { toast } = useToast()
   const queryClient = useQueryClient()
 
-  // Queries
   const { data: videosResponse } = useQuery({
     queryKey: ['videos'],
     queryFn: () => apiClient.get<Video[]>('/videos')
@@ -59,7 +56,6 @@ export function UserAssignment() {
     )
   })
 
-  // Mutations
   const assignMutation = useMutation({
     mutationFn: async () => {
       return apiClient.post<Assignment>(
@@ -105,7 +101,6 @@ export function UserAssignment() {
     }
   })
 
-  // Event Handlers
   const handleAssign = useCallback(async () => {
     if (!selectedVideo || !selectedUser) {
       toast({
@@ -132,7 +127,6 @@ export function UserAssignment() {
     setCurrentPage(0)
   }, [])
 
-  // Table Columns
   const columns = useMemo<ColumnDef<Assignment>[]>(() => [
     {
       accessorKey: "video.title",
@@ -178,13 +172,11 @@ export function UserAssignment() {
     },
   ], [removeMutation])
 
-  // Get data from responses
   const videos = videosResponse?.data ?? []
   const users = usersResponse?.data ?? []
   const assignments = assignmentsResponse?.data ?? []
   const pageInfo = assignmentsResponse?.pageInfo
 
-  // Initialize table
   const table = useReactTable({
     data: assignments,
     columns,

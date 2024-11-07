@@ -26,7 +26,6 @@ export function VideoUpload() {
     progress: 0,
   })
   
-  // Add ref for the file input
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const { toast } = useToast()
@@ -47,7 +46,6 @@ export function VideoUpload() {
       const response = await apiClient.upload<{ id: string }>('/videos/upload', formData)
 
       if (response.success) {
-        // Immediately invalidate and refetch videos
         await queryClient.invalidateQueries({ queryKey: ['videos'] })
         
         toast({
@@ -55,11 +53,9 @@ export function VideoUpload() {
           description: "Video uploaded successfully",
         })
 
-        // Reset form
         setTitle("")
         setDescription("")
         setFile(null)
-        // Reset file input
         if (fileInputRef.current) {
           fileInputRef.current.value = ""
         }

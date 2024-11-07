@@ -46,10 +46,45 @@ interface PlayerState {
 }
 
 interface ActivityLogPayload {
-  videoId: string;
-  userId: number;
-  action: string;
-  timestamp: string;
+  videoId: string
+  userId: number
+  action: string
+  timestamp: string
+}
+ 
+
+const useLogActivity = (userId: number | undefined, videoId: string) => {
+  const { toast } = useToast()
+
+  const mutation = useMutation({
+    mutationFn: (action: string) => {
+      if (!userId) {
+        throw new Error('User ID is required')
+      }
+
+      const payload: ActivityLogPayload = {
+        videoId,
+        userId,
+        action,
+        timestamp: new Date().toISOString(),
+      }
+
+      return apiClient.post<ActivityLogEntry>('/activity-logs', payload)
+    },
+    onSuccess: () => {
+      console.log('Activity logged successfully')
+    },
+    onError: (error) => {
+      console.error('Error logging activity:', error)
+      toast({
+        title: "Error",
+        description: "Failed to log activity",
+        variant: "destructive",
+      })
+    },
+  })
+
+  return mutation.mutate
 }
 
 const initialPlayerState: PlayerState = {
@@ -81,35 +116,7 @@ export function VideoPlayer({
   const { user } = useAuth()
   const { toast } = useToast()
 
-  // Activity logging mutation
-  const { mutate: logView } = useMutation({
-    mutationFn: () => {
-      if (!user?.id) {
-        throw new Error('User ID is required')
-      }
-      
-      const payload: ActivityLogPayload = {
-        videoId,
-        userId: user.id,
-        action: "viewed", // Lowercase to match backend expectation
-        timestamp: new Date().toISOString()
-      }
-  
-       return apiClient.post<ActivityLogEntry>('/activity-logs', payload)
-    },
-    
-    onSuccess: () => {
-      console.log('Activity logged successfully')
-    },
-    onError: (error) => {
-      console.error('Error logging video view:', error)
-      toast({
-        title: "Error",
-        description: "Failed to log video view",
-        variant: "destructive",
-      })
-    }
-  })
+  const logActivity = useLogActivity(user?.id, videoId)
 
   // Reset state when video changes
   useEffect(() => {
@@ -131,14 +138,14 @@ export function VideoPlayer({
   const handlePlayPause = useCallback(() => {
     setPlayerState(prev => {
       const newPlaying = !prev.playing
-      // Log view only on first play
+      // Log "VIEWED" action only on first play
       if (newPlaying && !hasLoggedRef.current && !disableLogging && user?.id) {
         hasLoggedRef.current = true
-        logView()
+        logActivity("VIEWED") // Use uppercase action
       }
       return { ...prev, playing: newPlaying }
     })
-  }, [logView, disableLogging, user?.id])
+  }, [logActivity, disableLogging, user?.id])
 
   // Handle progress update
   const handleProgress = useCallback(({ played, loaded }: { played: number; loaded: number }) => {
@@ -251,6 +258,13 @@ export function VideoPlayer({
     }
   }, [autoplay, handlePlayPause])
 
+  // Add a handler for when the video ends
+  const handleEnded = useCallback(() => {
+    if (!disableLogging && user?.id) {
+      logActivity("COMPLETED") // Log "COMPLETED" action
+    }
+  }, [logActivity, disableLogging, user?.id])
+
   return (
     <Card className="overflow-hidden">
       <div ref={containerRef} className="relative aspect-video bg-black">
@@ -276,6 +290,7 @@ export function VideoPlayer({
             }
           }}
           onContextMenu={(e: React.MouseEvent) => e.preventDefault()}
+          onEnded={handleEnded} // Add this prop
         />
         
         {/* Controls UI - Same as before */}
