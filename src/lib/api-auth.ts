@@ -1,9 +1,7 @@
-// api-auth.ts
 import { setAuthCookies, clearAuthCookies, getRefreshToken } from './auth-utils'
 import type { ApiResponse, LoginResponse } from '@/types/api'
 
 const getAuthBaseUrl = () => {
-  // Add debugging
   console.log('Window:', typeof window)
   console.log('NEXT_PUBLIC_API_BASE_URL:', process.env.NEXT_PUBLIC_API_BASE_URL)
   console.log('NEXT_INTERNAL_API_BASE_URL:', process.env.NEXT_INTERNAL_API_BASE_URL)

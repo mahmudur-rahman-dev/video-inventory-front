@@ -117,7 +117,6 @@ export function VideoPlayer({
 
   const logActivity = useLogActivity(user?.id, videoId)
 
-  // Reset state when video changes
   useEffect(() => {
     setPlayerState(prev => ({
       ...initialPlayerState,
