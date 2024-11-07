@@ -77,7 +77,7 @@ export function ActivityLog() {
       accessorKey: "username",
       header: "User",
       cell: ({ row }) => (
-        <div className="font-medium">{row.original.username}</div>
+        <div className="font-medium">{row.original.user.username}</div>
       ),
     },
     {
@@ -103,7 +103,7 @@ export function ActivityLog() {
       header: "Video",
       cell: ({ row }) => (
         <div className="max-w-[300px] truncate">
-          {row.original.videoTitle}
+          {row.original.video.title}
         </div>
       ),
     },

@@ -11,12 +11,12 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 0, // Data is immediately stale
+            staleTime: 0,
             refetchOnWindowFocus: false,
-            retry: 1,
+            retry: 0,
           },
           mutations: {
-            retry: 1,
+            retry: 0,
           },
         },
       })

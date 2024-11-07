@@ -1,7 +1,6 @@
 "use client"
 
-import { useCallback, useEffect } from "react"
-import { useLocalStorage } from "@/hooks/use-local-storage"
+import { useState, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AssignedVideos } from "@/components/user/AssignedVideos"
@@ -17,46 +16,66 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Loader2 } from "lucide-react"
 import type { Video } from "@/types/api"
 
+type TabValue = "assigned" | "player"
+
 export default function UserDashboard() {
-  // Persist active tab and selected video in localStorage
-  const [activeTab, setActiveTab] = useLocalStorage("user-dashboard-tab", "assigned")
-  const [selectedVideoId, setSelectedVideoId] = useLocalStorage<string | null>("selected-video-id", null)
+  const [activeTab, setActiveTab] = useState<TabValue>("assigned")
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null)
   
   const { isAuthenticated, user, logout } = useAuth()
   const router = useRouter()
 
-  // Fetch assigned videos for the user
+  // Fetch assigned videos with React Query
   const { data: videosResponse, isLoading: isLoadingVideos } = useQuery({
     queryKey: ['assigned-videos', user?.id],
     queryFn: () => apiClient.get<Video[]>('/videos/user-videos'),
     enabled: !!user?.id,
   })
 
-  const videos = videosResponse?.data ?? []
+  // Memoize videos array to prevent unnecessary re-renders
+  const videos = useMemo(() => videosResponse?.data ?? [], [videosResponse?.data])
 
-  // Set initial video if none selected and videos are available
-  useEffect(() => {
-    if (videos.length > 0 && !selectedVideoId) {
-      setSelectedVideoId(videos[0].id)
+  // Initialize selected video when videos are loaded
+  const initialVideoId = useMemo(() => {
+    if (!selectedVideoId && videos.length > 0) {
+      return videos[0].id
     }
-  }, [videos, selectedVideoId, setSelectedVideoId])
+    return selectedVideoId
+  }, [videos, selectedVideoId])
 
-  const handleVideoSelect = useCallback((videoId: string) => {
-    setSelectedVideoId(videoId)
+  // Memoized handlers to prevent re-renders
+  const handleVideoSelect = useCallback((video: Video) => {
+    setSelectedVideoId(video.id)
     setActiveTab("player")
-  }, [setSelectedVideoId, setActiveTab])
+  }, [])
 
-  const handleLogout = async () => {
+  const handleVideoChange = useCallback((videoId: string) => {
+    setSelectedVideoId(videoId)
+  }, [])
+
+  const handleLogout = useCallback(async () => {
     try {
       await logout()
       router.push('/login')
     } catch (error) {
       console.error('Logout error:', error)
     }
-  }
+  }, [logout, router])
 
+  // Early return for unauthorized access
   if (!isAuthenticated || !user?.roles.includes('ROLE_USER')) {
     return null
+  }
+
+  // Loading state
+  if (isLoadingVideos) {
+    return (
+      <Container>
+        <div className="flex justify-center items-center h-[60vh]">
+          <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      </Container>
+    )
   }
 
   return (
@@ -72,7 +91,7 @@ export default function UserDashboard() {
         </Button>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="space-y-6">
         <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
           <TabsTrigger value="assigned" className="flex items-center gap-2">
             <List className="h-4 w-4" />
@@ -81,7 +100,7 @@ export default function UserDashboard() {
           <TabsTrigger 
             value="player" 
             className="flex items-center gap-2"
-            // Remove the disabled condition since we'll always have a selected video when videos are available
+            disabled={videos.length === 0}
           >
             <FileVideo className="h-4 w-4" />
             Video Player
@@ -89,13 +108,7 @@ export default function UserDashboard() {
         </TabsList>
 
         <TabsContent value="assigned">
-          {isLoadingVideos ? (
-            <Card>
-              <CardContent className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin" />
-              </CardContent>
-            </Card>
-          ) : videos.length === 0 ? (
+          {videos.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center h-64 text-center">
                 <FileVideo className="h-12 w-12 text-muted-foreground mb-4" />
@@ -108,29 +121,18 @@ export default function UserDashboard() {
           ) : (
             <AssignedVideos 
               videos={videos}
-              // selectedVideoId={selectedVideoId} // Add this prop
-              onSelectVideo={(video) => handleVideoSelect(video.id)} 
+              onSelectVideo={handleVideoSelect}
             />
           )}
         </TabsContent>
 
         <TabsContent value="player">
-          {videos.length > 0 ? (
+          {videos.length > 0 && initialVideoId && (
             <VideoPlayerWithList 
               videos={videos}
-              initialVideoId={selectedVideoId || videos[0].id} // Fallback to first video if none selected
-              onVideoChange={setSelectedVideoId}
+              initialVideoId={initialVideoId}
+              onVideoChange={handleVideoChange}
             />
-          ) : (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center h-64 text-center">
-                <FileVideo className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-lg font-medium">No Videos Available</p>
-                <p className="text-sm text-muted-foreground">
-                  No videos have been assigned to you yet.
-                </p>
-              </CardContent>
-            </Card>
           )}
         </TabsContent>
       </Tabs>

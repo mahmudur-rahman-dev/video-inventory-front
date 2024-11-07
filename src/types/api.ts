@@ -17,10 +17,8 @@ export interface User {
   
   export interface ActivityLogEntry {
     id: string;
-    userId: string;
-    username: string;
-    videoId: string;
-    videoTitle: string;
+    user: User;
+    video: Video;
     action: 'viewed' | 'updated' | 'deleted' | 'assigned';
     timestamp: string;
   }

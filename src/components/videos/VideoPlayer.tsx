@@ -1,9 +1,11 @@
-import { useState, useRef, useCallback, useEffect } from "react"
+"use client"
+import React, { useState, useRef, useCallback, useEffect } from "react"
 import ReactPlayer from "react-player"
 import { Button } from "@/components/ui/button"
 import { Slider } from "@/components/ui/slider"
 import { Card } from "@/components/ui/card"
 import { useToast } from "@/components/ui/use-toast"
+import { useMutation } from "@tanstack/react-query"
 import { 
   Play, 
   Pause, 
@@ -17,6 +19,8 @@ import {
 } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/providers/auth-provider"
+import { ActivityLog } from "../admin/ActivityLog"
+import {ActivityLogEntry} from "@/types/api"
 
 interface VideoPlayerProps {
   src: string
@@ -39,7 +43,13 @@ interface PlayerState {
   duration: number
   playbackRate: number
   fullscreen: boolean
-  hasLogged: boolean
+}
+
+interface ActivityLogPayload {
+  videoId: string;
+  userId: number;
+  action: string;
+  timestamp: string;
 }
 
 const initialPlayerState: PlayerState = {
@@ -51,7 +61,6 @@ const initialPlayerState: PlayerState = {
   duration: 0,
   playbackRate: 1.0,
   fullscreen: false,
-  hasLogged: false
 }
 
 export function VideoPlayer({ 
@@ -67,17 +76,49 @@ export function VideoPlayer({
 }: VideoPlayerProps) {
   const playerRef = useRef<ReactPlayer>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const hasLoggedRef = useRef(false)
   const [playerState, setPlayerState] = useState<PlayerState>(initialPlayerState)
   const { user } = useAuth()
   const { toast } = useToast()
 
-  // Reset player state when video changes
+  // Activity logging mutation
+  const { mutate: logView } = useMutation({
+    mutationFn: () => {
+      if (!user?.id) {
+        throw new Error('User ID is required')
+      }
+      
+      const payload: ActivityLogPayload = {
+        videoId,
+        userId: user.id,
+        action: "viewed", // Lowercase to match backend expectation
+        timestamp: new Date().toISOString()
+      }
+  
+       return apiClient.post<ActivityLogEntry>('/activity-logs', payload)
+    },
+    
+    onSuccess: () => {
+      console.log('Activity logged successfully')
+    },
+    onError: (error) => {
+      console.error('Error logging video view:', error)
+      toast({
+        title: "Error",
+        description: "Failed to log video view",
+        variant: "destructive",
+      })
+    }
+  })
+
+  // Reset state when video changes
   useEffect(() => {
     setPlayerState(prev => ({
       ...initialPlayerState,
       volume: prev.volume,
       muted: prev.muted
     }))
+    hasLoggedRef.current = false
   }, [src])
 
   // Get video URL
@@ -86,40 +127,20 @@ export function VideoPlayer({
     return `${baseUrl}/uploads/${videoUrl}`
   }, [])
 
-  // Log video view
-  const logVideoView = useCallback(async () => {
-    if (disableLogging || playerState.hasLogged) return
-
-    try {
-      const response = await apiClient.post('/activity-logs', {
-        videoId,
-        action: 'viewed',
-        userId: user?.id,
-        timestamp: new Date().toISOString()
-      })
-
-      if (response.success) {
-        setPlayerState(prev => ({ ...prev, hasLogged: true }))
-        console.log('Video view logged successfully')
-      } else {
-        console.error('Failed to log video view:', response.message)
-      }
-    } catch (error) {
-      console.error('Error logging video view:', error)
-    }
-  }, [videoId, user?.id, disableLogging, playerState.hasLogged])
-
-  // Handle player state changes
+  // Handle play/pause
   const handlePlayPause = useCallback(() => {
     setPlayerState(prev => {
       const newPlaying = !prev.playing
-      if (newPlaying && !prev.hasLogged && !disableLogging) {
-        logVideoView()
+      // Log view only on first play
+      if (newPlaying && !hasLoggedRef.current && !disableLogging && user?.id) {
+        hasLoggedRef.current = true
+        logView()
       }
       return { ...prev, playing: newPlaying }
     })
-  }, [logVideoView, disableLogging])
+  }, [logView, disableLogging, user?.id])
 
+  // Handle progress update
   const handleProgress = useCallback(({ played, loaded }: { played: number; loaded: number }) => {
     setPlayerState(prev => ({
       ...prev,
@@ -128,6 +149,7 @@ export function VideoPlayer({
     }))
   }, [])
 
+  // Handle volume change
   const handleVolumeChange = useCallback((value: number[]) => {
     setPlayerState(prev => ({
       ...prev,
@@ -136,12 +158,14 @@ export function VideoPlayer({
     }))
   }, [])
 
+  // Handle seek
   const handleSeek = useCallback((value: number[]) => {
     const seekTo = value[0] / 100
     playerRef.current?.seekTo(seekTo)
     setPlayerState(prev => ({ ...prev, played: value[0] }))
   }, [])
 
+  // Toggle mute
   const toggleMute = useCallback(() => {
     setPlayerState(prev => ({
       ...prev,
@@ -150,6 +174,7 @@ export function VideoPlayer({
     }))
   }, [])
 
+  // Handle playback rate change
   const handlePlaybackRateChange = useCallback(() => {
     setPlayerState(prev => {
       const newRate = prev.playbackRate >= 2 ? 1 : prev.playbackRate + 0.5
@@ -157,6 +182,7 @@ export function VideoPlayer({
     })
   }, [])
 
+  // Toggle fullscreen
   const toggleFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
@@ -186,7 +212,6 @@ export function VideoPlayer({
   // Handle keyboard controls
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      // Ignore if focus is on an input element
       if (document.activeElement?.tagName === 'INPUT') return
 
       switch (e.code) {
@@ -222,12 +247,9 @@ export function VideoPlayer({
   // Handle autoplay
   useEffect(() => {
     if (autoplay) {
-      setPlayerState(prev => ({ ...prev, playing: true }))
-      if (!disableLogging) {
-        logVideoView()
-      }
+      handlePlayPause()
     }
-  }, [autoplay, logVideoView, disableLogging])
+  }, [autoplay, handlePlayPause])
 
   return (
     <Card className="overflow-hidden">
@@ -256,9 +278,8 @@ export function VideoPlayer({
           onContextMenu={(e: React.MouseEvent) => e.preventDefault()}
         />
         
-        {/* Custom Controls Overlay */}
+        {/* Controls UI - Same as before */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-          {/* Progress bar */}
           <Slider
             value={[playerState.played]}
             max={100}
@@ -267,10 +288,8 @@ export function VideoPlayer({
             className="mb-4"
           />
           
-          {/* Controls */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              {/* Play/Pause */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -284,7 +303,6 @@ export function VideoPlayer({
                 )}
               </Button>
 
-              {/* Previous/Next */}
               {(hasPrevious || hasNext) && (
                 <div className="flex items-center space-x-2">
                   <Button
@@ -308,7 +326,6 @@ export function VideoPlayer({
                 </div>
               )}
 
-              {/* Volume Control */}
               <div className="flex items-center space-x-2">
                 <Button
                   variant="ghost"
@@ -331,15 +348,12 @@ export function VideoPlayer({
                 />
               </div>
 
-              {/* Time Display */}
               <span className="text-white text-sm">
                 {formatTime(playerState.played * playerState.duration / 100)} / {formatTime(playerState.duration)}
               </span>
             </div>
 
-            {/* Right Controls */}
             <div className="flex items-center space-x-2">
-              {/* Settings/Playback Speed */}
               <Button
                 variant="ghost"
                 size="sm"
@@ -350,7 +364,6 @@ export function VideoPlayer({
                 <span className="ml-1">{playerState.playbackRate}x</span>
               </Button>
 
-              {/* Fullscreen */}
               <Button
                 variant="ghost"
                 size="sm"
