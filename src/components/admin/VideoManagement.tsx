@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import type { Video, ApiResponse, PageInfo } from "@/types/api"
+import type { Video, ApiResponse } from "@/types/api"
 
 export function VideoManagement() {
   const [currentPage, setCurrentPage] = useState(0)

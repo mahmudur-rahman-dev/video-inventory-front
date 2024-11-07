@@ -21,7 +21,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
 import { Loader2, UserPlus, ChevronLeft, ChevronRight, Trash2 } from "lucide-react"
-import type { Video, User, VideoAssignment, ApiResponse } from "@/types/api"
+import type { Video, User, VideoAssignment } from "@/types/api"
 
 interface Assignment extends VideoAssignment {
   video: Video;

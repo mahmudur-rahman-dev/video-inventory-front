@@ -19,7 +19,6 @@ import {
 } from "lucide-react"
 import { apiClient } from "@/lib/api-client"
 import { useAuth } from "@/providers/auth-provider"
-import { ActivityLog } from "../admin/ActivityLog"
 import {ActivityLogEntry} from "@/types/api"
 
 interface VideoPlayerProps {

@@ -21,7 +21,7 @@ import { useQuery } from "@tanstack/react-query"
 import { apiClient } from "@/lib/api-client"
 import { Loader2, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import type { ActivityLogEntry, ApiResponse } from "@/types/api"
+import type { ActivityLogEntry } from "@/types/api"
 import { useDebounce } from "@/hooks/use-debounce"
 
 interface ActivityFilters {

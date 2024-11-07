@@ -1,10 +1,11 @@
+// eslint-disable-next-line @typescript-eslint/no-empty-interface
+
 "use client"
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { authService } from '@/lib/api-auth'
 import { clearAuthCookies, getUserData, getAccessToken } from '@/lib/auth-utils'
-import type { AuthenticationResponse } from '@/types/api'
 
 interface AuthState {
   isAuthenticated: boolean;

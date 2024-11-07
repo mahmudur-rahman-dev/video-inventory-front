@@ -11,7 +11,6 @@ import {
 } from "@/components/ui/select"
 import { FileVideo, Calendar } from "lucide-react"
 import { useDebounce } from "@/hooks/use-debounce"
-import { cn } from "@/lib/utils"
 import type { Video } from "@/types/api"
 
 interface AssignedVideosProps {
