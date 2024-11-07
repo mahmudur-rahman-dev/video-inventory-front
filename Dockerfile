@@ -3,29 +3,43 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy package files and install dependencies
-COPY package.json package-lock.json ./
-RUN npm install
+# Define build arguments with default values
+ARG NEXT_PUBLIC_API_BASE_URL="http://localhost:8080/api/v1"
+ARG NEXT_PUBLIC_VIDEO_API_BASE_URL="http://localhost:8080"
 
-# Copy the rest of the application code and build the application
+# Set as environment variables
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_VIDEO_API_BASE_URL=$NEXT_PUBLIC_VIDEO_API_BASE_URL
+
+# Copy package files
+COPY package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy the rest of the application code
 COPY . .
+
+# Build the application
 RUN npm run build
 
-# Stage 2: Create the production image
+# Stage 2: Production image
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy only the necessary files from the build stage
-COPY --from=builder /app/package.json /app/package-lock.json ./
+# Copy necessary files from builder
+COPY --from=builder /app/package*.json ./
 COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
+COPY --from=builder /app/node_modules ./node_modules
 
-# Install only production dependencies
-RUN npm install --only=production
+# Set runtime environment variables
+ENV NEXT_PUBLIC_API_BASE_URL=$NEXT_PUBLIC_API_BASE_URL
+ENV NEXT_PUBLIC_VIDEO_API_BASE_URL=$NEXT_PUBLIC_VIDEO_API_BASE_URL
 
-# Expose the port the app runs on
+# Expose port
 EXPOSE 3000
 
 # Start the application
-CMD ["npm", "run", "start"]
+CMD ["npm", "start"]
