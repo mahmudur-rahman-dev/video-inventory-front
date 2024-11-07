@@ -1,11 +1,19 @@
+// api-auth.ts
 import { setAuthCookies, clearAuthCookies, getRefreshToken } from './auth-utils'
 import type { ApiResponse, LoginResponse } from '@/types/api'
 
-const AUTH_BASE_URL = `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth` || 'http://localhost:8080/api/v1/auth'
+const getAuthBaseUrl = () => {
+  if (typeof window === 'undefined') {
+    return `${process.env.NEXT_INTERNAL_API_BASE_URL}/auth` || 'http://backend:8080/api/v1/auth';
+  }
+  
+  return `${process.env.NEXT_PUBLIC_API_BASE_URL}/auth` || 'http://localhost:8080/api/v1/auth';
+};
 
 export const authService = {
   async login(username: string, password: string): Promise<ApiResponse<LoginResponse>> {
-    const response = await fetch(`${AUTH_BASE_URL}/login`, {
+    const baseUrl = getAuthBaseUrl();
+    const response = await fetch(`${baseUrl}/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -25,8 +33,8 @@ export const authService = {
   },
 
   async logout(): Promise<void> {
+    const baseUrl = getAuthBaseUrl();
     const refreshToken = getRefreshToken()
-    console.log("refreshToken from logout", refreshToken)
 
     if (!refreshToken) {
       clearAuthCookies()
@@ -34,7 +42,7 @@ export const authService = {
     }
 
     try {
-      const response = await fetch(`${AUTH_BASE_URL}/logout`, {
+      const response = await fetch(`${baseUrl}/logout`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${refreshToken}`,
