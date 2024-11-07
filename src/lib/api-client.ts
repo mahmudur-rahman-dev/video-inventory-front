@@ -3,7 +3,6 @@ import type { ApiResponse } from '@/types/api';
 const baseUrl = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
 console.log('API Base URL:', baseUrl);
 
-// Add interface for params
 interface QueryParams {
   [key: string]: string | number | boolean | undefined;
 }
@@ -15,7 +14,6 @@ const createApiError = (status: number, message: string) => {
   return error;
 }
 
-// Add function to build URL with query parameters
 const buildUrl = (endpoint: string, params?: QueryParams): string => {
   if (!params) return `${baseUrl}${endpoint}`;
   

@@ -40,7 +40,7 @@ export default function AdminDashboard() {
   return (
     <Container>
       <div className="flex justify-between items-center mb-6">
-        <Heading title="Admin Dashboard" description={`Welcome, ${user?.username}`} />
+        <Heading title="Admin Dashboard" description={`Welcome Back ${user?.username}`} />
         <Button onClick={handleLogout}>Logout</Button>
       </div>
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">

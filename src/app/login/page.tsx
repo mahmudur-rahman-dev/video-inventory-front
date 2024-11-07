@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { useAuth } from "@/providers/auth-provider"
-import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -48,7 +47,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center">
       <Card className="w-[400px]">
         <CardHeader>
-          <CardTitle>Login to VI-MG</CardTitle>
+          <CardTitle>Login</CardTitle>
           <CardDescription>
             Enter your credentials to access the video inventory management system
           </CardDescription>

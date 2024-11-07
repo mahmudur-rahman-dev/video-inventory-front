@@ -1,4 +1,3 @@
-// api-auth.ts
 import { setAuthCookies, clearAuthCookies, getRefreshToken } from './auth-utils'
 import type { ApiResponse, LoginResponse } from '@/types/api'
 

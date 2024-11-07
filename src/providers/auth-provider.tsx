@@ -1,4 +1,3 @@
-// auth-provider.tsx
 "use client"
 
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react'
@@ -41,7 +40,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null
   }
 
-  // Check auth state on mount
   useEffect(() => {
     const initializeAuth = async () => {
       try {
@@ -92,7 +90,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading: false,
       })
 
-      // Redirect based on role
       router.push(primaryRole === 'admin' ? '/admin' : '/user')
     } catch (error) {
       console.error('Login error:', error)
@@ -109,7 +106,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error)
     } finally {
-      // Always clear local auth state
       clearAuthCookies()
       
       setAuthState({
@@ -124,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   if (authState.isLoading) {
-    return <div>Loading...</div> // Or your loading component
+    return <div>Loading...</div> 
   }
 
   return (

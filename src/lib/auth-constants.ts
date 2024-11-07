@@ -1,5 +1,3 @@
-// src/lib/auth-constants.ts
-
 export const AUTH_CONSTANTS = {
     COOKIE_NAMES: {
       ACCESS_TOKEN: 'jwt-token',

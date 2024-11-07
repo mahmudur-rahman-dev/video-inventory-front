@@ -25,17 +25,14 @@ export default function UserDashboard() {
   const { isAuthenticated, user, logout } = useAuth()
   const router = useRouter()
 
-  // Fetch assigned videos with React Query
   const { data: videosResponse, isLoading: isLoadingVideos } = useQuery({
     queryKey: ['assigned-videos', user?.id],
     queryFn: () => apiClient.get<Video[]>('/videos/user-videos'),
     enabled: !!user?.id,
   })
 
-  // Memoize videos array to prevent unnecessary re-renders
   const videos = useMemo(() => videosResponse?.data ?? [], [videosResponse?.data])
 
-  // Initialize selected video when videos are loaded
   const initialVideoId = useMemo(() => {
     if (!selectedVideoId && videos.length > 0) {
       return videos[0].id
@@ -43,7 +40,6 @@ export default function UserDashboard() {
     return selectedVideoId
   }, [videos, selectedVideoId])
 
-  // Memoized handlers to prevent re-renders
   const handleVideoSelect = useCallback((video: Video) => {
     setSelectedVideoId(video.id)
     setActiveTab("player")
@@ -62,12 +58,10 @@ export default function UserDashboard() {
     }
   }, [logout, router])
 
-  // Early return for unauthorized access
   if (!isAuthenticated || !user?.roles.includes('ROLE_USER')) {
     return null
   }
 
-  // Loading state
   if (isLoadingVideos) {
     return (
       <Container>
@@ -83,7 +77,7 @@ export default function UserDashboard() {
       <div className="flex justify-between items-center mb-6">
         <Heading 
           title="User Dashboard" 
-          description={`Welcome back, ${user.username}`}
+          description={`Welcome Back ${user?.username}`}
         />
         <Button onClick={handleLogout} variant="outline">
           <LogOut className="h-4 w-4 mr-2" />

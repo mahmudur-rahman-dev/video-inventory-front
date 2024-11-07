@@ -29,7 +29,6 @@ export function AssignedVideos({ videos, onSelectVideo }: AssignedVideosProps) {
   const filteredAndSortedVideos = useMemo(() => {
     let result = [...videos]
 
-    // Filter by search query
     if (debouncedSearch) {
       const searchLower = debouncedSearch.toLowerCase()
       result = result.filter(
@@ -39,7 +38,6 @@ export function AssignedVideos({ videos, onSelectVideo }: AssignedVideosProps) {
       )
     }
 
-    // Sort videos
     result.sort((a, b) => {
       switch (sortBy) {
         case "newest":

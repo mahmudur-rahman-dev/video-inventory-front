@@ -128,13 +128,11 @@ export function VideoPlayer({
     hasLoggedRef.current = false
   }, [src])
 
-  // Get video URL
   const getVideoUrl = (videoUrl: string) => {
     const baseUrl = process.env.NEXT_PUBLIC_VIDEO_API_BASE_URL || 'http://localhost:8080'
     return `${baseUrl}/uploads/${videoUrl}`
   }
 
-  // Handle play/pause
   const handlePlayPause = useCallback(() => {
     setPlayerState(prev => {
       const newPlaying = !prev.playing
@@ -147,7 +145,6 @@ export function VideoPlayer({
     })
   }, [logActivity, disableLogging, user?.id])
 
-  // Handle progress update
   const handleProgress = useCallback(({ played, loaded }: { played: number; loaded: number }) => {
     setPlayerState(prev => ({
       ...prev,
@@ -156,7 +153,6 @@ export function VideoPlayer({
     }))
   }, [])
 
-  // Handle volume change
   const handleVolumeChange = useCallback((value: number[]) => {
     setPlayerState(prev => ({
       ...prev,
@@ -165,14 +161,12 @@ export function VideoPlayer({
     }))
   }, [])
 
-  // Handle seek
   const handleSeek = useCallback((value: number[]) => {
     const seekTo = value[0] / 100
     playerRef.current?.seekTo(seekTo)
     setPlayerState(prev => ({ ...prev, played: value[0] }))
   }, [])
 
-  // Toggle mute
   const toggleMute = useCallback(() => {
     setPlayerState(prev => ({
       ...prev,
@@ -181,7 +175,6 @@ export function VideoPlayer({
     }))
   }, [])
 
-  // Handle playback rate change
   const handlePlaybackRateChange = useCallback(() => {
     setPlayerState(prev => {
       const newRate = prev.playbackRate >= 2 ? 1 : prev.playbackRate + 0.5
@@ -189,7 +182,6 @@ export function VideoPlayer({
     })
   }, [])
 
-  // Toggle fullscreen
   const toggleFullscreen = useCallback(async () => {
     try {
       if (!document.fullscreenElement) {
@@ -204,7 +196,6 @@ export function VideoPlayer({
     }
   }, [])
 
-  // Format time helper
   const formatTime = useCallback((seconds: number) => {
     const date = new Date(seconds * 1000)
     const hh = date.getUTCHours()
@@ -216,7 +207,6 @@ export function VideoPlayer({
     return `${mm}:${ss}`
   }, [])
 
-  // Handle keyboard controls
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if (document.activeElement?.tagName === 'INPUT') return
@@ -251,17 +241,15 @@ export function VideoPlayer({
     return () => window.removeEventListener('keydown', handleKeyPress)
   }, [handlePlayPause, toggleMute, toggleFullscreen, hasPrevious, hasNext, onNext, onPrevious])
 
-  // Handle autoplay
   useEffect(() => {
     if (autoplay) {
       handlePlayPause()
     }
   }, [autoplay, handlePlayPause])
 
-  // Add a handler for when the video ends
   const handleEnded = useCallback(() => {
     if (!disableLogging && user?.id) {
-      logActivity("COMPLETED") // Log "COMPLETED" action
+      logActivity("COMPLETED")
     }
   }, [logActivity, disableLogging, user?.id])
 
@@ -290,7 +278,7 @@ export function VideoPlayer({
             }
           }}
           onContextMenu={(e: React.MouseEvent) => e.preventDefault()}
-          onEnded={handleEnded} // Add this prop
+          onEnded={handleEnded} 
         />
         
         {/* Controls UI - Same as before */}

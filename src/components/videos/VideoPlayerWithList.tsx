@@ -1,8 +1,6 @@
 import { useState, useEffect, useCallback } from "react"
 import { VideoPlayer } from "./VideoPlayer"
 import { VideoList } from "./VideoList"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Card } from "@/components/ui/card"
 import type { Video } from "@/types/api"
 
 interface VideoPlayerWithListProps {
@@ -60,7 +58,7 @@ export function VideoPlayerWithList({
       {/* Main Video Player Area */}
       <div className="lg:col-span-3 space-y-4">
         <VideoPlayer
-          key={selectedVideo.id} // Add this line
+          key={selectedVideo.id}
           src={selectedVideo.videoUrl}
           title={selectedVideo.title}
           videoId={selectedVideo.id}
