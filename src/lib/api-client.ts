@@ -1,18 +1,13 @@
-// src/lib/api-client.ts
-
 import type { ApiResponse } from '@/types/api';
 
-// Get the appropriate base URL depending on the environment
 const getBaseUrl = () => {
   if (typeof window === 'undefined') {
-    // Server-side requests
     return process.env.NEXT_INTERNAL_API_BASE_URL || 'http://backend:8080/api/v1';
   }
-  // Client-side requests
+
   return process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8080/api/v1';
 };
 
-// Add interface for params
 interface QueryParams {
   [key: string]: string | number | boolean | undefined;
 }
@@ -24,7 +19,6 @@ const createApiError = (status: number, message: string) => {
   return error;
 };
 
-// Add function to build URL with query parameters
 const buildUrl = (endpoint: string, params?: QueryParams): string => {
   const baseUrl = getBaseUrl();
   
