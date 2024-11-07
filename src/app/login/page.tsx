@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/ui/use-toast"
 import { Loader2 } from "lucide-react"
+import { RegistrationDialog } from "@/components/auth/RegistrationDialog"
 
 export default function LoginPage() {
   const [username, setUsername] = useState("")
@@ -93,6 +94,12 @@ export default function LoginPage() {
               )}
             </Button>
           </form>
+          
+          {/* Add the registration dialog */}
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            Don&apos;t have an account?
+          </div>
+          <RegistrationDialog />
         </CardContent>
       </Card>
     </div>

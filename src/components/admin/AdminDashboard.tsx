@@ -11,7 +11,7 @@ import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/providers/auth-provider"
-import { UserPlus, FileVideo, ListVideo, ActivitySquare } from "lucide-react"
+import { UserPlus, FileVideo, LogOut, ListVideo, ActivitySquare } from "lucide-react"
 import { useLocalStorage } from "@/hooks/use-local-storage" // We'll create this hook
 
 export default function AdminDashboard() {
@@ -40,8 +40,14 @@ export default function AdminDashboard() {
   return (
     <Container>
       <div className="flex justify-between items-center mb-6">
-        <Heading title="Admin Dashboard" description={`Welcome Back ${user?.username}`} />
-        <Button onClick={handleLogout}>Logout</Button>
+        <Heading 
+          title="Admin Dashboard" 
+          description={`Welcome Back ${user?.username}`}
+        />
+        <Button onClick={handleLogout} variant="outline">
+          <LogOut className="h-4 w-4 mr-2" />
+          Logout
+        </Button>
       </div>
       <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
         <TabsList className="grid grid-cols-4 gap-4">
