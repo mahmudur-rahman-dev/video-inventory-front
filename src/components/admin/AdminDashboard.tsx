@@ -11,11 +11,13 @@ import { Container } from "@/components/ui/container"
 import { Heading } from "@/components/ui/heading"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/providers/auth-provider"
-import { UserPlus, FileVideo, LogOut, ListVideo, ActivitySquare } from "lucide-react"
-import { useLocalStorage } from "@/hooks/use-local-storage" // We'll create this hook
+import { UserPlus, FileVideo, ListVideo, ActivitySquare, LogOut } from "lucide-react"
+import { useAdminStorage, clearAllAdminStorage } from "@/hooks/use-admin-storage"
+
+type TabValue = "upload" | "manage" | "assign" | "activity"
 
 export default function AdminDashboard() {
-  const [activeTab, setActiveTab] = useLocalStorage("admin-dashboard-tab", "upload")
+  const [activeTab, setActiveTab, clearActiveTab] = useAdminStorage<TabValue>("dashboard_tab", "upload")
   const { isAuthenticated, user, logout } = useAuth()
   const router = useRouter()
 
@@ -27,14 +29,13 @@ export default function AdminDashboard() {
 
   const handleLogout = async () => {
     try {
+      // Clear all admin-related storage before logout
+      clearAllAdminStorage()
       await logout()
+      router.push('/login')
     } catch (error) {
       console.error('Logout error:', error)
     }
-  }
-
-  const handleTabChange = (value: string) => {
-    setActiveTab(value)
   }
 
   return (
@@ -49,7 +50,7 @@ export default function AdminDashboard() {
           Logout
         </Button>
       </div>
-      <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="space-y-4">
         <TabsList className="grid grid-cols-4 gap-4">
           <TabsTrigger value="upload" className="flex items-center gap-2">
             <FileVideo className="h-4 w-4" />
